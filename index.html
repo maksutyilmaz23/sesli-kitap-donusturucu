@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Sesli Kitap Dönüştürücü</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.0/lame.min.js"></script>
+<style>
+  :root{
+    --bg:#0f1115; --card:#181b22; --card2:#20242e; --accent:#6c5ce7; --accent2:#a29bfe;
+    --text:#eef0f5; --muted:#8b93a7; --good:#2ecc71; --bad:#ff5c5c; --warn:#f1c40f;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:linear-gradient(160deg,#0f1115,#161a22);color:var(--text);min-height:100vh;padding-bottom:90px;}
+  header{padding:22px 18px 14px;text-align:center;}
+  header h1{margin:0;font-size:1.4rem;background:linear-gradient(90deg,var(--accent2),#74b9ff);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  header p{margin:6px 0 0;color:var(--muted);font-size:.85rem;}
+  .tabs{display:flex;gap:8px;padding:0 16px;margin-bottom:14px;}
+  .tab{flex:1;text-align:center;padding:10px;border-radius:12px;background:var(--card);color:var(--muted);font-size:.85rem;font-weight:600;cursor:pointer;border:1px solid #2a2f3a;}
+  .tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .container{padding:0 16px;max-width:640px;margin:0 auto;}
+  .card{background:var(--card);border:1px solid #262b36;border-radius:var(--radius);padding:18px;margin-bottom:16px;}
+  .card h2{margin:0 0 12px;font-size:1rem;color:var(--accent2);}
+  .dropzone{border:2px dashed #3a4050;border-radius:var(--radius);padding:34px 16px;text-align:center;cursor:pointer;color:var(--muted);transition:.15s;}
+  .dropzone.drag{border-color:var(--accent);background:#1e1a33;}
+  .dropzone strong{color:var(--text);}
+  input[type=file]{display:none;}
+  .filepill{display:flex;align-items:center;justify-content:space-between;background:var(--card2);border-radius:12px;padding:12px 14px;margin-top:12px;font-size:.85rem;}
+  .filepill button{background:none;border:none;color:var(--bad);font-size:.85rem;cursor:pointer;}
+  button.primary{width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(90deg,var(--accent),#8e7cf5);color:#fff;font-size:1rem;font-weight:700;cursor:pointer;margin-top:14px;}
+  button.primary:disabled{opacity:.5;}
+  button.secondary{width:100%;padding:12px;border:1px solid #333a49;border-radius:12px;background:transparent;color:var(--text);font-size:.9rem;font-weight:600;cursor:pointer;margin-top:8px;}
+  .progress-wrap{margin-top:16px;}
+  .bar{height:10px;border-radius:6px;background:#282e3a;overflow:hidden;}
+  .bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),#74b9ff);width:0%;transition:width .3s;}
+  .progress-label{font-size:.78rem;color:var(--muted);margin-top:6px;display:flex;justify-content:space-between;}
+  .log{max-height:140px;overflow-y:auto;background:#0d0f14;border-radius:10px;padding:10px;font-size:.72rem;color:var(--muted);margin-top:10px;font-family:monospace;}
+  .log div{padding:2px 0;}
+  .log .err{color:var(--bad);}
+  .log .ok{color:var(--good);}
+  .keyrow{display:flex;gap:8px;align-items:center;background:var(--card2);border-radius:12px;padding:10px 12px;margin-bottom:8px;}
+  .keyrow input{flex:1;background:transparent;border:none;color:var(--text);font-size:.85rem;outline:none;}
+  .keyrow .dot{width:9px;height:9px;border-radius:50%;background:var(--good);flex-shrink:0;}
+  .keyrow .dot.bad{background:var(--bad);}
+  .keyrow button{background:none;border:none;color:var(--muted);font-size:1rem;cursor:pointer;}
+  .voicepick{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .voicepick label{background:var(--card2);border-radius:10px;padding:10px;font-size:.82rem;text-align:center;cursor:pointer;border:1px solid transparent;}
+  .voicepick input{display:none;}
+  .voicepick input:checked + span{color:var(--accent2);font-weight:700;}
+  .voicepick label:has(input:checked){border-color:var(--accent);}
+  .result{text-align:center;padding:10px 0;}
+  .result a{display:inline-block;margin-top:10px;background:var(--good);color:#08210f;padding:12px 22px;border-radius:12px;text-decoration:none;font-weight:700;}
+  .muted{color:var(--muted);font-size:.8rem;}
+  .hidden{display:none !important;}
+  a.link{color:var(--accent2);}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🎧 Sesli Kitap Dönüştürücü</h1>
+  <p>PDF kitaplarını MP3 sesli kitaba çevir</p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="convert">Dönüştür</div>
+  <div class="tab" data-tab="keys">API Anahtarları</div>
+</div>
+
+<div class="container">
+
+  <!-- CONVERT TAB -->
+  <div id="tab-convert">
+    <div class="card">
+      <h2>1. PDF Yükle</h2>
+      <div class="dropzone" id="dropzone">
+        <div>📄 <strong>Dosya seç</strong> ya da buraya sürükle</div>
+        <div class="muted" style="margin-top:6px;">Sadece .pdf</div>
+        <input type="file" id="fileInput" accept="application/pdf">
+      </div>
+      <div id="filepill" class="filepill hidden">
+        <span id="filename"></span>
+        <button id="removeFile">✕ Kaldır</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>2. Ses Seç</h2>
+      <div class="voicepick" id="voicepick">
+        <label><input type="radio" name="voice" value="Kore" checked><span>Kore — Doğal (E)</span></label>
+        <label><input type="radio" name="voice" value="Puck"><span>Puck — Canlı (E)</span></label>
+        <label><input type="radio" name="voice" value="Aoede"><span>Aoede — Yumuşak (K)</span></label>
+        <label><input type="radio" name="voice" value="Charon"><span>Charon — Derin (E)</span></label>
+      </div>
+      <div class="muted" style="margin-top:10px;">Konuşma hızı</div>
+      <input type="range" id="rateRange" min="0.75" max="1.5" step="0.05" value="1" style="width:100%;">
+    </div>
+
+    <div class="card">
+      <h2>3. Dönüştür</h2>
+      <div id="noKeysWarn" class="muted hidden" style="color:var(--warn);">⚠️ Önce "API Anahtarları" sekmesinden en az bir Gemini API key eklemelisin.</div>
+      <button class="primary" id="startBtn" disabled>🎙️ Sesli Kitaba Çevir</button>
+
+      <div class="progress-wrap hidden" id="progressWrap">
+        <div class="bar"><div class="bar-fill" id="barFill"></div></div>
+        <div class="progress-label">
+          <span id="progressText">Hazırlanıyor…</span>
+          <span id="progressPct">0%</span>
+        </div>
+        <div class="log" id="log"></div>
+      </div>
+
+      <div class="result hidden" id="resultBox">
+        <div>✅ Dönüştürme tamamlandı!</div>
+        <audio id="player" controls style="width:100%;margin-top:10px;"></audio>
+        <br>
+        <a id="downloadLink" download="sesli-kitap.mp3">⬇️ MP3 Olarak İndir</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- KEYS TAB -->
+  <div id="tab-keys" class="hidden">
+    <div class="card">
+      <h2>Google AI Studio API Anahtarları</h2>
+      <p class="muted">Birden fazla ücretsiz key ekleyebilirsin. Bir key kotasını doldurunca uygulama otomatik olarak sıradaki key'e geçer. Anahtarlar sadece bu cihazda saklanır.</p>
+      <div id="keyList"></div>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <input type="text" id="newKeyInput" placeholder="AIzaSy… yapıştır" style="flex:1;padding:12px;border-radius:10px;border:1px solid #333a49;background:var(--card2);color:var(--text);">
+        <button class="secondary" style="width:auto;margin:0;padding:12px 16px;" id="addKeyBtn">Ekle</button>
+      </div>
+      <p class="muted" style="margin-top:14px;">Ücretsiz key almak için: <a class="link" href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a></p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ---------- storage ----------
+const STORE_KEY = 'skd_api_keys_v1';
+function loadKeys(){ try{ return JSON.parse(localStorage.getItem(STORE_KEY)||'[]'); }catch(e){ return []; } }
+function saveKeys(k){ localStorage.setItem(STORE_KEY, JSON.stringify(k)); }
+let apiKeys = loadKeys(); // [{key, status:'ok'|'bad'}]
+
+// ---------- tabs ----------
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('tab-convert').classList.toggle('hidden', t.dataset.tab!=='convert');
+    document.getElementById('tab-keys').classList.toggle('hidden', t.dataset.tab!=='keys');
+  };
+});
+
+// ---------- key management UI ----------
+function renderKeys(){
+  const list = document.getElementById('keyList');
+  list.innerHTML='';
+  if(apiKeys.length===0){
+    list.innerHTML = '<p class="muted">Henüz key eklenmedi.</p>';
+  }
+  apiKeys.forEach((k,i)=>{
+    const row=document.createElement('div');
+    row.className='keyrow';
+    const masked = k.key.slice(0,6)+'••••••'+k.key.slice(-4);
+    row.innerHTML = `<div class="dot ${k.status==='bad'?'bad':''}"></div><input value="${masked}" readonly><button data-i="${i}">🗑️</button>`;
+    row.querySelector('button').onclick=()=>{ apiKeys.splice(i,1); saveKeys(apiKeys); renderKeys(); updateStartBtn(); };
+    list.appendChild(row);
+  });
+}
+document.getElementById('addKeyBtn').onclick=()=>{
+  const input = document.getElementById('newKeyInput');
+  const val = input.value.trim();
+  if(!val) return;
+  apiKeys.push({key:val, status:'ok'});
+  saveKeys(apiKeys);
+  input.value='';
+  renderKeys();
+  updateStartBtn();
+};
+function updateStartBtn(){
+  const has = apiKeys.length>0;
+  document.getElementById('startBtn').disabled = !has || !pdfFile;
+  document.getElementById('noKeysWarn').classList.toggle('hidden', has);
+}
+renderKeys();
+
+// ---------- file handling ----------
+let pdfFile=null;
+const dropzone=document.getElementById('dropzone');
+const fileInput=document.getElementById('fileInput');
+dropzone.onclick=()=>fileInput.click();
+['dragover','dragenter'].forEach(ev=>dropzone.addEventListener(ev,e=>{e.preventDefault();dropzone.classList.add('drag');}));
+['dragleave','drop'].forEach(ev=>dropzone.addEventListener(ev,e=>{e.preventDefault();dropzone.classList.remove('drag');}));
+dropzone.addEventListener('drop',e=>{ if(e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); });
+fileInput.onchange=()=>{ if(fileInput.files[0]) setFile(fileInput.files[0]); };
+function setFile(f){
+  if(f.type!=='application/pdf'){ alert('Lütfen bir PDF dosyası seç.'); return; }
+  pdfFile=f;
+  document.getElementById('filename').textContent = f.name;
+  document.getElementById('filepill').classList.remove('hidden');
+  updateStartBtn();
+}
+document.getElementById('removeFile').onclick=()=>{
+  pdfFile=null;
+  document.getElementById('filepill').classList.add('hidden');
+  fileInput.value='';
+  updateStartBtn();
+};
+
+// ---------- logging/progress ----------
+function log(msg, cls){
+  const l=document.getElementById('log');
+  const d=document.createElement('div');
+  if(cls) d.className=cls;
+  d.textContent=msg;
+  l.appendChild(d);
+  l.scrollTop=l.scrollHeight;
+}
+function setProgress(pct, text){
+  document.getElementById('barFill').style.width=pct+'%';
+  document.getElementById('progressPct').textContent=Math.round(pct)+'%';
+  if(text) document.getElementById('progressText').textContent=text;
+}
+
+// ---------- PDF text extraction ----------
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+async function extractPdfText(file){
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+  let fullText='';
+  for(let p=1;p<=pdf.numPages;p++){
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    const text = content.items.map(it=>it.str).join(' ');
+    fullText += text + '\n\n';
+    setProgress((p/pdf.numPages)*15, `PDF okunuyor: sayfa ${p}/${pdf.numPages}`);
+  }
+  return fullText.trim();
+}
+
+// split into ~3500 char chunks on sentence boundaries
+function chunkText(text, maxLen=3500){
+  const sentences = text.split(/(?<=[.!?…])\s+/);
+  const chunks=[]; let cur='';
+  for(const s of sentences){
+    if((cur+s).length > maxLen && cur.length>0){ chunks.push(cur.trim()); cur=''; }
+    cur += s+' ';
+    if(cur.length > maxLen*1.4){ chunks.push(cur.trim()); cur=''; } // safety for very long sentences
+  }
+  if(cur.trim()) chunks.push(cur.trim());
+  return chunks;
+}
+
+// ---------- Gemini TTS with key rotation ----------
+let keyIndex=0;
+function nextKey(){
+  const usable = apiKeys.filter(k=>k.status!=='bad');
+  if(usable.length===0) return null;
+  const k = usable[keyIndex % usable.length];
+  keyIndex++;
+  return k;
+}
+function markBad(keyObj){
+  const found = apiKeys.find(k=>k.key===keyObj.key);
+  if(found) found.status='bad';
+  saveKeys(apiKeys);
+  renderKeys();
+}
+
+async function ttsChunk(text, voiceName){
+  let lastErr=null;
+  const attempts = Math.max(apiKeys.length,1);
+  for(let a=0;a<attempts;a++){
+    const keyObj = nextKey();
+    if(!keyObj) throw new Error('Kullanılabilir API key kalmadı');
+    try{
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${keyObj.key}`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          contents:[{parts:[{text}]}],
+          generationConfig:{
+            responseModalities:['AUDIO'],
+            speechConfig:{ voiceConfig:{ prebuiltVoiceConfig:{ voiceName } } }
+          }
+        })
+      });
+      if(res.status===429 || res.status===403){
+        markBad(keyObj);
+        lastErr = new Error(`Key kota/erişim hatası (${res.status})`);
+        continue;
+      }
+      if(!res.ok){
+        const errBody = await res.text();
+        throw new Error(`API hata ${res.status}: ${errBody.slice(0,150)}`);
+      }
+      const data = await res.json();
+      const b64 = data?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      if(!b64) throw new Error('Ses verisi alınamadı');
+      return base64ToInt16(b64);
+    }catch(e){
+      lastErr=e;
+      continue;
+    }
+  }
+  throw lastErr || new Error('TTS başarısız');
+}
+
+function base64ToInt16(b64){
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+  // Gemini TTS returns raw 16-bit PCM, 24kHz, mono
+  return new Int16Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.length/2));
+}
+
+// ---------- MP3 encoding ----------
+function encodeMp3(pcmChunks, sampleRate=24000){
+  const mp3encoder = new lamejs.Mp3Encoder(1, sampleRate, 96);
+  const mp3Data=[];
+  for(const chunk of pcmChunks){
+    const mp3buf = mp3encoder.encodeBuffer(chunk);
+    if(mp3buf.length>0) mp3Data.push(new Int8Array(mp3buf));
+  }
+  const end = mp3encoder.flush();
+  if(end.length>0) mp3Data.push(new Int8Array(end));
+  return new Blob(mp3Data, {type:'audio/mp3'});
+}
+
+// ---------- main flow ----------
+document.getElementById('startBtn').onclick = async ()=>{
+  const btn = document.getElementById('startBtn');
+  btn.disabled=true;
+  document.getElementById('progressWrap').classList.remove('hidden');
+  document.getElementById('resultBox').classList.add('hidden');
+  document.getElementById('log').innerHTML='';
+  const voiceName = document.querySelector('input[name=voice]:checked').value;
+
+  try{
+    setProgress(1,'PDF okunuyor…');
+    log('PDF metni çıkarılıyor…');
+    const text = await extractPdfText(pdfFile);
+    if(!text || text.length<10) throw new Error('PDF içinde okunabilir metin bulunamadı (taranmış görsel PDF olabilir).');
+    log(`Metin çıkarıldı: ${text.length} karakter`, 'ok');
+
+    const chunks = chunkText(text);
+    log(`${chunks.length} parçaya bölündü, sese çevriliyor…`);
+
+    const pcmChunks=[];
+    for(let i=0;i<chunks.length;i++){
+      setProgress(15 + (i/chunks.length)*75, `Sese çevriliyor: ${i+1}/${chunks.length}`);
+      try{
+        const pcm = await ttsChunk(chunks[i], voiceName);
+        pcmChunks.push(pcm);
+        log(`Parça ${i+1}/${chunks.length} tamam`, 'ok');
+      }catch(e){
+        log(`Parça ${i+1} hata: ${e.message} — atlanıyor`, 'err');
+      }
+    }
+    if(pcmChunks.length===0) throw new Error('Hiçbir parça seslendirilemedi. API key(ler)ini kontrol et.');
+
+    setProgress(92,'MP3 oluşturuluyor…');
+    log('MP3 dosyası kodlanıyor…');
+    const blob = encodeMp3(pcmChunks);
+    const url = URL.createObjectURL(blob);
+
+    setProgress(100,'Tamamlandı');
+    document.getElementById('player').src=url;
+    document.getElementById('downloadLink').href=url;
+    document.getElementById('downloadLink').download = pdfFile.name.replace(/\.pdf$/i,'')+'.mp3';
+    document.getElementById('resultBox').classList.remove('hidden');
+    log('Sesli kitap hazır!', 'ok');
+  }catch(e){
+    log('HATA: '+e.message, 'err');
+    alert('Hata: '+e.message);
+  }finally{
+    btn.disabled=false;
+  }
+};
+</script>
+</body>
+</html>

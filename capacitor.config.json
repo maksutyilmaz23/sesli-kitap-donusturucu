@@ -1,0 +1,6 @@
+{
+  "appId": "com.mesutyilmaz.seslikitap",
+  "appName": "Sesli Kitap Dönüştürücü",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}
