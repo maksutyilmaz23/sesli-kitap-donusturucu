@@ -138,10 +138,11 @@
           <span id="progressText">Hazırlanıyor…</span>
           <span id="progressPct">0%</span>
         </div>
+        <button class="secondary" id="pauseBtn" style="margin-top:10px;">⏸️ Duraklat</button>
         <div class="log" id="log"></div>
         <div id="pausedNotice" class="pausednotice hidden">
-          ⏸️ Tüm anahtarların kotası doldu. İlerleme cihazına kaydedildi, kaybolmadı.<br>
-          Yeni bir key ekle ya da mevcut key'in kotası yenilenince <b>"Devam Et"</b>e bas.
+          <span id="pausedNoticeText">⏸️ Duraklatıldı.</span><br>
+          İlerleme cihazına kaydedildi, kapatsan bile kaybolmaz.
           <button class="primary" id="continueAfterPauseBtn" style="margin-top:10px;">▶️ Devam Et</button>
         </div>
       </div>
@@ -439,6 +440,7 @@ function encodeMp3(pcmChunks, sampleRate=24000){
 /* ================= job / resume state ================= */
 let currentJob=null; // {id:'current', fileName, voiceName, chunks:[...], total, createdAt}
 let isConverting=false;
+let pauseRequested=false;
 
 async function saveJobMeta(job){ await idbPut('job', job); }
 async function saveChunkAudio(index, int16arr){
@@ -480,8 +482,14 @@ document.getElementById('resumeBtn').onclick=async ()=>{
 };
 document.getElementById('continueAfterPauseBtn').onclick=async ()=>{
   document.getElementById('pausedNotice').classList.add('hidden');
+  pauseRequested=false;
   log('Devam ediliyor…');
   await runConversionLoop(currentJob);
+};
+document.getElementById('pauseBtn').onclick=()=>{
+  pauseRequested=true;
+  document.getElementById('pauseBtn').disabled=true;
+  document.getElementById('pauseBtn').textContent='⏸️ Duraklatılıyor…';
 };
 function maybeOfferResumeAfterKeyChange(){
   // if job is paused waiting for keys and a new usable key just got added, hint user
@@ -494,13 +502,25 @@ checkForResumableJob();
 
 /* core loop: converts remaining chunks of `job`, persisting each result.
    Pauses (does not fail) if all keys become exhausted. */
+function showPaused(message){
+  document.getElementById('pausedNoticeText').textContent = message;
+  document.getElementById('pausedNotice').classList.remove('hidden');
+  document.getElementById('pauseBtn').classList.add('hidden');
+  isConverting=false;
+  document.getElementById('startBtn').disabled=false;
+}
+
 async function runConversionLoop(job){
   if(isConverting) return;
   isConverting=true;
+  pauseRequested=false;
   document.getElementById('startBtn').disabled=true;
   document.getElementById('progressWrap').classList.remove('hidden');
   document.getElementById('resultBox').classList.add('hidden');
   document.getElementById('pausedNotice').classList.add('hidden');
+  document.getElementById('pauseBtn').classList.remove('hidden');
+  document.getElementById('pauseBtn').disabled=false;
+  document.getElementById('pauseBtn').textContent='⏸️ Duraklat';
 
   try{
     const total = job.chunks.length;
@@ -509,6 +529,12 @@ async function runConversionLoop(job){
 
     for(let i=0;i<total;i++){
       if(completed.has(i)) continue;
+
+      if(pauseRequested){
+        showPaused(`⏸️ Duraklatıldı. ${completed.size}/${total} parça tamamlandı — ilerleme kaydedildi, kaybolmaz.`);
+        return;
+      }
+
       setProgress(10 + (i/total)*80, `Sese çevriliyor: ${i+1}/${total}`);
       const result = await ttsChunkTryAllKeys(job.chunks[i], job.voiceName);
       if(result.ok){
@@ -517,13 +543,16 @@ async function runConversionLoop(job){
         log(`Parça ${i+1}/${total} tamam`, 'ok');
       }else if(result.exhausted){
         log('Tüm aktif key\'lerin kotası doldu. İlerleme kaydedildi.', 'warn');
-        document.getElementById('pausedNotice').classList.remove('hidden');
-        isConverting=false;
-        document.getElementById('startBtn').disabled=false;
+        showPaused(`⏸️ Kota doldu. ${completed.size}/${total} parça tamamlandı — ilerleme kaydedildi, kaybolmaz.`);
         return; // pause — do NOT clear job, do NOT alert as error
       }else{
         log(`Parça ${i+1} geçici hata verdi, devam ediliyor…`, 'warn');
         // leave uncompleted; loop will retry it next full pass triggered by resume
+      }
+
+      if(pauseRequested){
+        showPaused(`⏸️ Duraklatıldı. ${completed.size}/${total} parça tamamlandı — ilerleme kaydedildi, kaybolmaz.`);
+        return;
       }
     }
 
@@ -531,9 +560,7 @@ async function runConversionLoop(job){
     if(completed.size < total){
       // some chunks had transient (non-quota) failures; offer resume so user can retry
       log('Bazı parçalar tamamlanamadı, "Devam Et" ile tekrar denenebilir.', 'warn');
-      document.getElementById('pausedNotice').classList.remove('hidden');
-      isConverting=false;
-      document.getElementById('startBtn').disabled=false;
+      showPaused(`⏸️ ${completed.size}/${total} parça tamamlandı. Bazı parçalar geçici hata verdi — "Devam Et" ile tekrar denenebilir.`);
       return;
     }
 
@@ -551,6 +578,7 @@ async function runConversionLoop(job){
     document.getElementById('downloadLink').href=url;
     document.getElementById('downloadLink').download = job.fileName.replace(/\.pdf$/i,'')+'.mp3';
     document.getElementById('resultBox').classList.remove('hidden');
+    document.getElementById('pauseBtn').classList.add('hidden');
     log('Sesli kitap hazır!', 'ok');
 
     await clearJob();
