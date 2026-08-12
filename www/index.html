@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
 <title>Sesli Kitap Dönüştürücü</title>
+<link rel="icon" href="icon.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.0/lame.min.js"></script>
 <style>
@@ -14,8 +15,9 @@
   }
   *{box-sizing:border-box;}
   body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:linear-gradient(160deg,#0f1115,#161a22);color:var(--text);min-height:100vh;padding-bottom:90px;}
-  header{padding:22px 18px 14px;text-align:center;}
-  header h1{margin:0;font-size:1.4rem;background:linear-gradient(90deg,var(--accent2),#74b9ff);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  header{padding:20px 18px 14px;text-align:center;}
+  header .logo{width:64px;height:64px;border-radius:18px;margin:0 auto 8px;display:block;box-shadow:0 6px 20px rgba(108,92,231,.4);}
+  header h1{margin:0;font-size:1.3rem;background:linear-gradient(90deg,var(--accent2),#74b9ff);-webkit-background-clip:text;background-clip:text;color:transparent;}
   header p{margin:6px 0 0;color:var(--muted);font-size:.85rem;}
   .tabs{display:flex;gap:8px;padding:0 16px;margin-bottom:14px;}
   .tab{flex:1;text-align:center;padding:10px;border-radius:12px;background:var(--card);color:var(--muted);font-size:.85rem;font-weight:600;cursor:pointer;border:1px solid #2a2f3a;}
@@ -32,6 +34,7 @@
   button.primary{width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(90deg,var(--accent),#8e7cf5);color:#fff;font-size:1rem;font-weight:700;cursor:pointer;margin-top:14px;}
   button.primary:disabled{opacity:.5;}
   button.secondary{width:100%;padding:12px;border:1px solid #333a49;border-radius:12px;background:transparent;color:var(--text);font-size:.9rem;font-weight:600;cursor:pointer;margin-top:8px;}
+  button.warnbtn{background:linear-gradient(90deg,#e67e22,#f39c12);}
   .progress-wrap{margin-top:16px;}
   .bar{height:10px;border-radius:6px;background:#282e3a;overflow:hidden;}
   .bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),#74b9ff);width:0%;transition:width .3s;}
@@ -40,13 +43,23 @@
   .log div{padding:2px 0;}
   .log .err{color:var(--bad);}
   .log .ok{color:var(--good);}
-  .keyrow{display:flex;gap:8px;align-items:center;background:var(--card2);border-radius:12px;padding:10px 12px;margin-bottom:8px;}
-  .keyrow input{flex:1;background:transparent;border:none;color:var(--text);font-size:.85rem;outline:none;}
-  .keyrow .dot{width:9px;height:9px;border-radius:50%;background:var(--good);flex-shrink:0;}
-  .keyrow .dot.bad{background:var(--bad);}
-  .keyrow button{background:none;border:none;color:var(--muted);font-size:1rem;cursor:pointer;}
+  .log .warn{color:var(--warn);}
+  .keyrow{display:flex;gap:10px;align-items:center;background:var(--card2);border-radius:12px;padding:10px 12px;margin-bottom:8px;}
+  .keyrow input.masked{flex:1;background:transparent;border:none;color:var(--text);font-size:.85rem;outline:none;}
+  .status-dot{width:9px;height:9px;border-radius:50%;background:var(--good);flex-shrink:0;}
+  .status-dot.bad{background:var(--bad);}
+  .status-dot.off{background:#555;}
+  .switch{position:relative;width:38px;height:22px;flex-shrink:0;}
+  .switch input{opacity:0;width:0;height:0;}
+  .slider{position:absolute;cursor:pointer;inset:0;background:#3a4050;border-radius:22px;transition:.2s;}
+  .slider:before{content:"";position:absolute;height:16px;width:16px;left:3px;top:3px;background:white;border-radius:50%;transition:.2s;}
+  .switch input:checked + .slider{background:var(--accent);}
+  .switch input:checked + .slider:before{transform:translateX(16px);}
+  .keyrow button.icon{background:none;border:none;color:var(--muted);font-size:1rem;cursor:pointer;flex-shrink:0;}
+  .keyrow .keylabel{display:flex;flex-direction:column;flex:1;min-width:0;}
+  .keyrow .keylabel small{color:var(--muted);font-size:.68rem;}
   .voicepick{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-  .voicepick label{background:var(--card2);border-radius:10px;padding:10px;font-size:.82rem;text-align:center;cursor:pointer;border:1px solid transparent;}
+  .voicepick label{background:var(--card2);border-radius:10px;padding:10px;font-size:.82rem;text-align:center;cursor:pointer;border:1px solid transparent;display:block;}
   .voicepick input{display:none;}
   .voicepick input:checked + span{color:var(--accent2);font-weight:700;}
   .voicepick label:has(input:checked){border-color:var(--accent);}
@@ -55,12 +68,20 @@
   .muted{color:var(--muted);font-size:.8rem;}
   .hidden{display:none !important;}
   a.link{color:var(--accent2);}
+  .banner{background:#241f38;border:1px solid var(--accent);border-radius:12px;padding:14px;margin-bottom:16px;font-size:.85rem;}
+  .banner strong{color:var(--accent2);}
+  .banner-actions{display:flex;gap:8px;margin-top:10px;}
+  .banner-actions button{flex:1;padding:10px;border-radius:10px;border:none;font-weight:700;cursor:pointer;font-size:.82rem;}
+  .btn-resume{background:var(--accent);color:#fff;}
+  .btn-discard{background:transparent;border:1px solid #444b5c !important;color:var(--muted);}
+  .pausednotice{background:#2e2410;border:1px solid var(--warn);border-radius:12px;padding:12px;margin-top:12px;font-size:.82rem;color:#ffe9a8;}
 </style>
 </head>
 <body>
 
 <header>
-  <h1>🎧 Sesli Kitap Dönüştürücü</h1>
+  <img class="logo" src="icon.png" alt="logo">
+  <h1>Sesli Kitap Dönüştürücü</h1>
   <p>PDF kitaplarını MP3 sesli kitaba çevir</p>
 </header>
 
@@ -73,7 +94,17 @@
 
   <!-- CONVERT TAB -->
   <div id="tab-convert">
-    <div class="card">
+
+    <div id="resumeBanner" class="banner hidden">
+      <div><strong>Yarım kalan bir dönüştürme var</strong></div>
+      <div class="muted" id="resumeInfo" style="margin-top:4px;"></div>
+      <div class="banner-actions">
+        <button class="btn-resume" id="resumeBtn">▶️ Devam Et</button>
+        <button class="btn-discard" id="discardBtn">🗑️ Sil, Yeni Başla</button>
+      </div>
+    </div>
+
+    <div class="card" id="uploadCard">
       <h2>1. PDF Yükle</h2>
       <div class="dropzone" id="dropzone">
         <div>📄 <strong>Dosya seç</strong> ya da buraya sürükle</div>
@@ -86,7 +117,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="voiceCard">
       <h2>2. Ses Seç</h2>
       <div class="voicepick" id="voicepick">
         <label><input type="radio" name="voice" value="Kore" checked><span>Kore — Doğal (E)</span></label>
@@ -94,8 +125,6 @@
         <label><input type="radio" name="voice" value="Aoede"><span>Aoede — Yumuşak (K)</span></label>
         <label><input type="radio" name="voice" value="Charon"><span>Charon — Derin (E)</span></label>
       </div>
-      <div class="muted" style="margin-top:10px;">Konuşma hızı</div>
-      <input type="range" id="rateRange" min="0.75" max="1.5" step="0.05" value="1" style="width:100%;">
     </div>
 
     <div class="card">
@@ -110,6 +139,11 @@
           <span id="progressPct">0%</span>
         </div>
         <div class="log" id="log"></div>
+        <div id="pausedNotice" class="pausednotice hidden">
+          ⏸️ Tüm anahtarların kotası doldu. İlerleme cihazına kaydedildi, kaybolmadı.<br>
+          Yeni bir key ekle ya da mevcut key'in kotası yenilenince <b>"Devam Et"</b>e bas.
+          <button class="primary" id="continueAfterPauseBtn" style="margin-top:10px;">▶️ Devam Et</button>
+        </div>
       </div>
 
       <div class="result hidden" id="resultBox">
@@ -125,7 +159,7 @@
   <div id="tab-keys" class="hidden">
     <div class="card">
       <h2>Google AI Studio API Anahtarları</h2>
-      <p class="muted">Birden fazla ücretsiz key ekleyebilirsin. Bir key kotasını doldurunca uygulama otomatik olarak sıradaki key'e geçer. Anahtarlar sadece bu cihazda saklanır.</p>
+      <p class="muted">Birden fazla ücretsiz key ekleyebilirsin. Bir key'in kotası dolunca uygulama otomatik sıradaki aktif key'e geçer. İstediğin key'i anahtar simgesiyle geçici olarak devre dışı bırakabilir, sonra tekrar açabilirsin. Kotası dolan key'i "Sıfırla" ile tekrar deneyebilirsin (örn. kota yenilendiğinde).</p>
       <div id="keyList"></div>
       <div style="display:flex;gap:8px;margin-top:10px;">
         <input type="text" id="newKeyInput" placeholder="AIzaSy… yapıştır" style="flex:1;padding:12px;border-radius:10px;border:1px solid #333a49;background:var(--card2);color:var(--text);">
@@ -138,13 +172,71 @@
 </div>
 
 <script>
-// ---------- storage ----------
-const STORE_KEY = 'skd_api_keys_v1';
-function loadKeys(){ try{ return JSON.parse(localStorage.getItem(STORE_KEY)||'[]'); }catch(e){ return []; } }
-function saveKeys(k){ localStorage.setItem(STORE_KEY, JSON.stringify(k)); }
-let apiKeys = loadKeys(); // [{key, status:'ok'|'bad'}]
+/* ================= IndexedDB helper ================= */
+const DB_NAME='skd_db', DB_VERSION=1;
+function idbOpen(){
+  return new Promise((res,rej)=>{
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = ()=>{
+      const db=req.result;
+      if(!db.objectStoreNames.contains('job')) db.createObjectStore('job',{keyPath:'id'});
+      if(!db.objectStoreNames.contains('audio_chunks')) db.createObjectStore('audio_chunks',{keyPath:'index'});
+      if(!db.objectStoreNames.contains('final')) db.createObjectStore('final',{keyPath:'id'});
+    };
+    req.onsuccess=()=>res(req.result);
+    req.onerror=()=>rej(req.error);
+  });
+}
+async function idbPut(store, val){
+  const db = await idbOpen();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction(store,'readwrite');
+    tx.objectStore(store).put(val);
+    tx.oncomplete=()=>res();
+    tx.onerror=()=>rej(tx.error);
+  });
+}
+async function idbGet(store, key){
+  const db = await idbOpen();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction(store,'readonly');
+    const r=tx.objectStore(store).get(key);
+    r.onsuccess=()=>res(r.result);
+    r.onerror=()=>rej(r.error);
+  });
+}
+async function idbGetAll(store){
+  const db = await idbOpen();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction(store,'readonly');
+    const r=tx.objectStore(store).getAll();
+    r.onsuccess=()=>res(r.result);
+    r.onerror=()=>rej(r.error);
+  });
+}
+async function idbClear(store){
+  const db = await idbOpen();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction(store,'readwrite');
+    tx.objectStore(store).clear();
+    tx.oncomplete=()=>res();
+    tx.onerror=()=>rej(tx.error);
+  });
+}
 
-// ---------- tabs ----------
+/* ================= key storage ================= */
+const STORE_KEY = 'skd_api_keys_v2';
+function loadKeys(){
+  try{
+    const raw = JSON.parse(localStorage.getItem(STORE_KEY)||'[]');
+    // migrate old format {key,status} -> add enabled
+    return raw.map(k=>({key:k.key, status:k.status||'ok', enabled: k.enabled!==false}));
+  }catch(e){ return []; }
+}
+function saveKeys(k){ localStorage.setItem(STORE_KEY, JSON.stringify(k)); }
+let apiKeys = loadKeys();
+
+/* ================= tabs ================= */
 document.querySelectorAll('.tab').forEach(t=>{
   t.onclick=()=>{
     document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
@@ -154,7 +246,7 @@ document.querySelectorAll('.tab').forEach(t=>{
   };
 });
 
-// ---------- key management UI ----------
+/* ================= key management UI ================= */
 function renderKeys(){
   const list = document.getElementById('keyList');
   list.innerHTML='';
@@ -165,8 +257,21 @@ function renderKeys(){
     const row=document.createElement('div');
     row.className='keyrow';
     const masked = k.key.slice(0,6)+'••••••'+k.key.slice(-4);
-    row.innerHTML = `<div class="dot ${k.status==='bad'?'bad':''}"></div><input value="${masked}" readonly><button data-i="${i}">🗑️</button>`;
-    row.querySelector('button').onclick=()=>{ apiKeys.splice(i,1); saveKeys(apiKeys); renderKeys(); updateStartBtn(); };
+    const dotClass = !k.enabled ? 'off' : (k.status==='bad' ? 'bad' : '');
+    const statusText = !k.enabled ? 'Pasif (manuel kapalı)' : (k.status==='bad' ? 'Kota doldu' : 'Aktif');
+    row.innerHTML = `
+      <div class="status-dot ${dotClass}"></div>
+      <div class="keylabel"><span>${masked}</span><small>${statusText}</small></div>
+      ${k.status==='bad' ? '<button class="icon" title="Sıfırla" data-act="reset">↺</button>' : ''}
+      <label class="switch" title="Aktif/Pasif">
+        <input type="checkbox" data-act="toggle" ${k.enabled?'checked':''}>
+        <span class="slider"></span>
+      </label>
+      <button class="icon" title="Sil" data-act="delete">🗑️</button>`;
+    row.querySelector('[data-act=delete]').onclick=()=>{ apiKeys.splice(i,1); saveKeys(apiKeys); renderKeys(); updateStartBtn(); };
+    const resetBtn = row.querySelector('[data-act=reset]');
+    if(resetBtn) resetBtn.onclick=()=>{ apiKeys[i].status='ok'; saveKeys(apiKeys); renderKeys(); updateStartBtn(); };
+    row.querySelector('[data-act=toggle]').onchange=(e)=>{ apiKeys[i].enabled=e.target.checked; saveKeys(apiKeys); renderKeys(); updateStartBtn(); };
     list.appendChild(row);
   });
 }
@@ -174,20 +279,22 @@ document.getElementById('addKeyBtn').onclick=()=>{
   const input = document.getElementById('newKeyInput');
   const val = input.value.trim();
   if(!val) return;
-  apiKeys.push({key:val, status:'ok'});
+  apiKeys.push({key:val, status:'ok', enabled:true});
   saveKeys(apiKeys);
   input.value='';
   renderKeys();
   updateStartBtn();
+  maybeOfferResumeAfterKeyChange();
 };
+function usableKeys(){ return apiKeys.filter(k=>k.enabled && k.status!=='bad'); }
 function updateStartBtn(){
-  const has = apiKeys.length>0;
+  const has = usableKeys().length>0;
   document.getElementById('startBtn').disabled = !has || !pdfFile;
   document.getElementById('noKeysWarn').classList.toggle('hidden', has);
 }
 renderKeys();
 
-// ---------- file handling ----------
+/* ================= file handling ================= */
 let pdfFile=null;
 const dropzone=document.getElementById('dropzone');
 const fileInput=document.getElementById('fileInput');
@@ -210,7 +317,7 @@ document.getElementById('removeFile').onclick=()=>{
   updateStartBtn();
 };
 
-// ---------- logging/progress ----------
+/* ================= logging/progress ================= */
 function log(msg, cls){
   const l=document.getElementById('log');
   const d=document.createElement('div');
@@ -225,7 +332,7 @@ function setProgress(pct, text){
   if(text) document.getElementById('progressText').textContent=text;
 }
 
-// ---------- PDF text extraction ----------
+/* ================= PDF text extraction ================= */
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 async function extractPdfText(file){
   const buf = await file.arrayBuffer();
@@ -236,88 +343,87 @@ async function extractPdfText(file){
     const content = await page.getTextContent();
     const text = content.items.map(it=>it.str).join(' ');
     fullText += text + '\n\n';
-    setProgress((p/pdf.numPages)*15, `PDF okunuyor: sayfa ${p}/${pdf.numPages}`);
+    setProgress((p/pdf.numPages)*10, `PDF okunuyor: sayfa ${p}/${pdf.numPages}`);
   }
   return fullText.trim();
 }
-
-// split into ~3500 char chunks on sentence boundaries
 function chunkText(text, maxLen=3500){
   const sentences = text.split(/(?<=[.!?…])\s+/);
   const chunks=[]; let cur='';
   for(const s of sentences){
     if((cur+s).length > maxLen && cur.length>0){ chunks.push(cur.trim()); cur=''; }
     cur += s+' ';
-    if(cur.length > maxLen*1.4){ chunks.push(cur.trim()); cur=''; } // safety for very long sentences
+    if(cur.length > maxLen*1.4){ chunks.push(cur.trim()); cur=''; }
   }
   if(cur.trim()) chunks.push(cur.trim());
   return chunks;
 }
 
-// ---------- Gemini TTS with key rotation ----------
-let keyIndex=0;
-function nextKey(){
-  const usable = apiKeys.filter(k=>k.status!=='bad');
-  if(usable.length===0) return null;
-  const k = usable[keyIndex % usable.length];
-  keyIndex++;
-  return k;
-}
-function markBad(keyObj){
-  const found = apiKeys.find(k=>k.key===keyObj.key);
-  if(found) found.status='bad';
-  saveKeys(apiKeys);
-  renderKeys();
-}
-
-async function ttsChunk(text, voiceName){
-  let lastErr=null;
-  const attempts = Math.max(apiKeys.length,1);
-  for(let a=0;a<attempts;a++){
-    const keyObj = nextKey();
-    if(!keyObj) throw new Error('Kullanılabilir API key kalmadı');
-    try{
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${keyObj.key}`,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          contents:[{parts:[{text}]}],
-          generationConfig:{
-            responseModalities:['AUDIO'],
-            speechConfig:{ voiceConfig:{ prebuiltVoiceConfig:{ voiceName } } }
-          }
-        })
-      });
-      if(res.status===429 || res.status===403){
-        markBad(keyObj);
-        lastErr = new Error(`Key kota/erişim hatası (${res.status})`);
-        continue;
-      }
-      if(!res.ok){
-        const errBody = await res.text();
-        throw new Error(`API hata ${res.status}: ${errBody.slice(0,150)}`);
-      }
-      const data = await res.json();
-      const b64 = data?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-      if(!b64) throw new Error('Ses verisi alınamadı');
-      return base64ToInt16(b64);
-    }catch(e){
-      lastErr=e;
-      continue;
-    }
-  }
-  throw lastErr || new Error('TTS başarısız');
-}
-
+/* ================= Gemini TTS with full key rotation ================= */
 function base64ToInt16(b64){
   const bin = atob(b64);
   const bytes = new Uint8Array(bin.length);
   for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
-  // Gemini TTS returns raw 16-bit PCM, 24kHz, mono
   return new Int16Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.length/2));
 }
+async function callTts(keyObj, text, voiceName){
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${keyObj.key}`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      contents:[{parts:[{text}]}],
+      generationConfig:{
+        responseModalities:['AUDIO'],
+        speechConfig:{ voiceConfig:{ prebuiltVoiceConfig:{ voiceName } } }
+      }
+    })
+  });
+  if(res.status===429 || res.status===403){
+    const e = new Error(`Kota/erişim hatası (${res.status})`); e.quota=true; throw e;
+  }
+  if(!res.ok){
+    const errBody = await res.text();
+    throw new Error(`API hata ${res.status}: ${errBody.slice(0,150)}`);
+  }
+  const data = await res.json();
+  const b64 = data?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+  if(!b64) throw new Error('Ses verisi alınamadı');
+  return base64ToInt16(b64);
+}
 
-// ---------- MP3 encoding ----------
+/* Try ALL usable keys (in rotation) for a single chunk before giving up.
+   Returns {ok:true, pcm} or {ok:false, exhausted:true} if no usable key could do it. */
+let rotationCursor=0;
+async function ttsChunkTryAllKeys(text, voiceName){
+  const usable = usableKeys();
+  if(usable.length===0) return {ok:false, exhausted:true};
+  const tried = new Set();
+  for(let i=0;i<usable.length;i++){
+    const keyObj = usable[rotationCursor % usable.length];
+    rotationCursor++;
+    if(tried.has(keyObj.key)) continue;
+    tried.add(keyObj.key);
+    try{
+      const pcm = await callTts(keyObj, text, voiceName);
+      return {ok:true, pcm};
+    }catch(e){
+      if(e.quota){
+        const found = apiKeys.find(k=>k.key===keyObj.key);
+        if(found){ found.status='bad'; saveKeys(apiKeys); renderKeys(); }
+        log(`Key ${keyObj.key.slice(0,6)}… kotası doldu, sıradaki key deneniyor…`,'warn');
+        continue;
+      }else{
+        log(`Hata: ${e.message} — sıradaki key deneniyor…`,'err');
+        continue;
+      }
+    }
+  }
+  // all usable keys tried and failed this pass
+  if(usableKeys().length===0) return {ok:false, exhausted:true};
+  return {ok:false, exhausted:false}; // transient errors on all — caller may retry later
+}
+
+/* ================= MP3 encoding ================= */
 function encodeMp3(pcmChunks, sampleRate=24000){
   const mp3encoder = new lamejs.Mp3Encoder(1, sampleRate, 96);
   const mp3Data=[];
@@ -330,17 +436,140 @@ function encodeMp3(pcmChunks, sampleRate=24000){
   return new Blob(mp3Data, {type:'audio/mp3'});
 }
 
-// ---------- main flow ----------
-document.getElementById('startBtn').onclick = async ()=>{
-  const btn = document.getElementById('startBtn');
-  btn.disabled=true;
+/* ================= job / resume state ================= */
+let currentJob=null; // {id:'current', fileName, voiceName, chunks:[...], total, createdAt}
+let isConverting=false;
+
+async function saveJobMeta(job){ await idbPut('job', job); }
+async function saveChunkAudio(index, int16arr){
+  await idbPut('audio_chunks', {index, buffer: int16arr.buffer.slice(0)});
+}
+async function getCompletedIndices(){
+  const all = await idbGetAll('audio_chunks');
+  return new Set(all.map(a=>a.index));
+}
+async function clearJob(){
+  await idbClear('audio_chunks');
+  await idbClear('job');
+  await idbClear('final');
+}
+
+async function checkForResumableJob(){
+  const job = await idbGet('job','current');
+  if(!job) return;
+  const completed = await getCompletedIndices();
+  if(completed.size >= job.chunks.length){
+    return; // already fully done (shouldn't normally persist like this) 
+  }
+  currentJob = job;
+  document.getElementById('resumeBanner').classList.remove('hidden');
+  document.getElementById('resumeInfo').textContent =
+    `${job.fileName} — ${completed.size}/${job.chunks.length} parça tamamlanmış. Kaldığın yerden devam edebilirsin.`;
+}
+document.getElementById('discardBtn').onclick=async ()=>{
+  await clearJob();
+  currentJob=null;
+  document.getElementById('resumeBanner').classList.add('hidden');
+};
+document.getElementById('resumeBtn').onclick=async ()=>{
+  document.getElementById('resumeBanner').classList.add('hidden');
+  document.getElementById('progressWrap').classList.remove('hidden');
+  document.getElementById('log').innerHTML='';
+  log('Kaldığı yerden devam ediliyor…');
+  await runConversionLoop(currentJob);
+};
+document.getElementById('continueAfterPauseBtn').onclick=async ()=>{
+  document.getElementById('pausedNotice').classList.add('hidden');
+  log('Devam ediliyor…');
+  await runConversionLoop(currentJob);
+};
+function maybeOfferResumeAfterKeyChange(){
+  // if job is paused waiting for keys and a new usable key just got added, hint user
+  if(currentJob && document.getElementById('pausedNotice').classList.contains('hidden')===false){
+    log('Yeni key eklendi, "Devam Et"e basabilirsin.','ok');
+  }
+}
+
+checkForResumableJob();
+
+/* core loop: converts remaining chunks of `job`, persisting each result.
+   Pauses (does not fail) if all keys become exhausted. */
+async function runConversionLoop(job){
+  if(isConverting) return;
+  isConverting=true;
+  document.getElementById('startBtn').disabled=true;
   document.getElementById('progressWrap').classList.remove('hidden');
   document.getElementById('resultBox').classList.add('hidden');
-  document.getElementById('log').innerHTML='';
-  const voiceName = document.querySelector('input[name=voice]:checked').value;
+  document.getElementById('pausedNotice').classList.add('hidden');
 
   try{
+    const total = job.chunks.length;
+    let completed = await getCompletedIndices();
+    setProgress(10 + (completed.size/total)*80, `Sese çevriliyor: ${completed.size}/${total}`);
+
+    for(let i=0;i<total;i++){
+      if(completed.has(i)) continue;
+      setProgress(10 + (i/total)*80, `Sese çevriliyor: ${i+1}/${total}`);
+      const result = await ttsChunkTryAllKeys(job.chunks[i], job.voiceName);
+      if(result.ok){
+        await saveChunkAudio(i, result.pcm);
+        completed.add(i);
+        log(`Parça ${i+1}/${total} tamam`, 'ok');
+      }else if(result.exhausted){
+        log('Tüm aktif key\'lerin kotası doldu. İlerleme kaydedildi.', 'warn');
+        document.getElementById('pausedNotice').classList.remove('hidden');
+        isConverting=false;
+        document.getElementById('startBtn').disabled=false;
+        return; // pause — do NOT clear job, do NOT alert as error
+      }else{
+        log(`Parça ${i+1} geçici hata verdi, devam ediliyor…`, 'warn');
+        // leave uncompleted; loop will retry it next full pass triggered by resume
+      }
+    }
+
+    completed = await getCompletedIndices();
+    if(completed.size < total){
+      // some chunks had transient (non-quota) failures; offer resume so user can retry
+      log('Bazı parçalar tamamlanamadı, "Devam Et" ile tekrar denenebilir.', 'warn');
+      document.getElementById('pausedNotice').classList.remove('hidden');
+      isConverting=false;
+      document.getElementById('startBtn').disabled=false;
+      return;
+    }
+
+    // all done -> merge
+    setProgress(92,'MP3 oluşturuluyor…');
+    log('Tüm parçalar tamam, MP3 birleştiriliyor…');
+    const allAudio = await idbGetAll('audio_chunks');
+    allAudio.sort((a,b)=>a.index-b.index);
+    const pcmChunks = allAudio.map(a=>new Int16Array(a.buffer));
+    const blob = encodeMp3(pcmChunks);
+    const url = URL.createObjectURL(blob);
+
+    setProgress(100,'Tamamlandı');
+    document.getElementById('player').src=url;
+    document.getElementById('downloadLink').href=url;
+    document.getElementById('downloadLink').download = job.fileName.replace(/\.pdf$/i,'')+'.mp3';
+    document.getElementById('resultBox').classList.remove('hidden');
+    log('Sesli kitap hazır!', 'ok');
+
+    await clearJob();
+    currentJob=null;
+  }catch(e){
+    log('HATA: '+e.message, 'err');
+    alert('Hata: '+e.message);
+  }finally{
+    isConverting=false;
+    document.getElementById('startBtn').disabled=false;
+  }
+}
+
+/* ================= start new conversion ================= */
+document.getElementById('startBtn').onclick = async ()=>{
+  document.getElementById('log').innerHTML='';
+  try{
     setProgress(1,'PDF okunuyor…');
+    document.getElementById('progressWrap').classList.remove('hidden');
     log('PDF metni çıkarılıyor…');
     const text = await extractPdfText(pdfFile);
     if(!text || text.length<10) throw new Error('PDF içinde okunabilir metin bulunamadı (taranmış görsel PDF olabilir).');
@@ -349,35 +578,16 @@ document.getElementById('startBtn').onclick = async ()=>{
     const chunks = chunkText(text);
     log(`${chunks.length} parçaya bölündü, sese çevriliyor…`);
 
-    const pcmChunks=[];
-    for(let i=0;i<chunks.length;i++){
-      setProgress(15 + (i/chunks.length)*75, `Sese çevriliyor: ${i+1}/${chunks.length}`);
-      try{
-        const pcm = await ttsChunk(chunks[i], voiceName);
-        pcmChunks.push(pcm);
-        log(`Parça ${i+1}/${chunks.length} tamam`, 'ok');
-      }catch(e){
-        log(`Parça ${i+1} hata: ${e.message} — atlanıyor`, 'err');
-      }
-    }
-    if(pcmChunks.length===0) throw new Error('Hiçbir parça seslendirilemedi. API key(ler)ini kontrol et.');
+    await clearJob(); // starting fresh replaces any old job
+    const job = { id:'current', fileName: pdfFile.name, voiceName: document.querySelector('input[name=voice]:checked').value, chunks, createdAt: Date.now() };
+    await saveJobMeta(job);
+    currentJob = job;
 
-    setProgress(92,'MP3 oluşturuluyor…');
-    log('MP3 dosyası kodlanıyor…');
-    const blob = encodeMp3(pcmChunks);
-    const url = URL.createObjectURL(blob);
-
-    setProgress(100,'Tamamlandı');
-    document.getElementById('player').src=url;
-    document.getElementById('downloadLink').href=url;
-    document.getElementById('downloadLink').download = pdfFile.name.replace(/\.pdf$/i,'')+'.mp3';
-    document.getElementById('resultBox').classList.remove('hidden');
-    log('Sesli kitap hazır!', 'ok');
+    await runConversionLoop(job);
   }catch(e){
     log('HATA: '+e.message, 'err');
     alert('Hata: '+e.message);
-  }finally{
-    btn.disabled=false;
+    document.getElementById('startBtn').disabled=false;
   }
 };
 </script>
