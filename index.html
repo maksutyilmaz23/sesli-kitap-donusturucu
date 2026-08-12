@@ -3,178 +3,368 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
-<title>Sesli Kitap Dönüştürücü</title>
+<title>Sesli Kitap Stüdyosu</title>
 <link rel="icon" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com/">
+<link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.0/lame.min.js"></script>
 <style>
   :root{
-    --bg:#0f1115; --card:#181b22; --card2:#20242e; --accent:#6c5ce7; --accent2:#a29bfe;
-    --text:#eef0f5; --muted:#8b93a7; --good:#2ecc71; --bad:#ff5c5c; --warn:#f1c40f;
-    --radius:16px;
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    --border: 217 32% 17%;
+    --card: 222 47% 13%;
+    --sidebar: 222 47% 10%;
+    --primary: 38 92% 50%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 217 32% 17%;
+    --muted: 217 32% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 32% 17%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+    --input: 217 32% 17%;
+    --ring: 38 92% 50%;
+    --good: 142 71% 45%;
+    --radius: 0.5rem;
   }
   *{box-sizing:border-box;}
-  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:linear-gradient(160deg,#0f1115,#161a22);color:var(--text);min-height:100vh;padding-bottom:90px;}
-  header{padding:20px 18px 14px;text-align:center;}
-  header .logo{width:64px;height:64px;border-radius:18px;margin:0 auto 8px;display:block;box-shadow:0 6px 20px rgba(108,92,231,.4);}
-  header h1{margin:0;font-size:1.3rem;background:linear-gradient(90deg,var(--accent2),#74b9ff);-webkit-background-clip:text;background-clip:text;color:transparent;}
-  header p{margin:6px 0 0;color:var(--muted);font-size:.85rem;}
-  .tabs{display:flex;gap:8px;padding:0 16px;margin-bottom:14px;}
-  .tab{flex:1;text-align:center;padding:10px;border-radius:12px;background:var(--card);color:var(--muted);font-size:.85rem;font-weight:600;cursor:pointer;border:1px solid #2a2f3a;}
-  .tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
-  .container{padding:0 16px;max-width:640px;margin:0 auto;}
-  .card{background:var(--card);border:1px solid #262b36;border-radius:var(--radius);padding:18px;margin-bottom:16px;}
-  .card h2{margin:0 0 12px;font-size:1rem;color:var(--accent2);}
-  .dropzone{border:2px dashed #3a4050;border-radius:var(--radius);padding:34px 16px;text-align:center;cursor:pointer;color:var(--muted);transition:.15s;}
-  .dropzone.drag{border-color:var(--accent);background:#1e1a33;}
-  .dropzone strong{color:var(--text);}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Inter',-apple-system,Segoe UI,Roboto,sans-serif;
+    background:hsl(var(--background));
+    color:hsl(var(--foreground));
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .icon{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block;}
+
+  /* top brand + nav */
+  header.app-header{
+    display:flex;align-items:center;gap:10px;
+    padding:16px 18px 12px;
+    background:hsl(var(--sidebar));
+    border-bottom:1px solid hsl(var(--border));
+  }
+  header.app-header .brand-icon{
+    width:34px;height:34px;border-radius:9px;
+    background:hsl(var(--primary));
+    display:flex;align-items:center;justify-content:center;
+    color:hsl(var(--primary-foreground));
+    flex-shrink:0;
+  }
+  header.app-header h1{
+    font-size:1.05rem;font-weight:700;letter-spacing:-0.02em;margin:0;
+    color:hsl(var(--foreground));
+  }
+  header.app-header p{margin:0;font-size:.72rem;color:hsl(var(--muted-foreground));}
+
+  nav.tabbar{
+    display:flex;gap:4px;padding:8px 12px;
+    background:hsl(var(--sidebar));
+    border-bottom:1px solid hsl(var(--border));
+    position:sticky;top:0;z-index:10;
+  }
+  nav.tabbar .navtab{
+    flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+    padding:9px 4px;border-radius:calc(var(--radius) - 2px);
+    color:hsl(var(--muted-foreground));font-size:.68rem;font-weight:600;
+    cursor:pointer;position:relative;
+  }
+  nav.tabbar .navtab.active{background:hsl(var(--accent));color:hsl(var(--primary));}
+  nav.tabbar .navtab .badge{
+    position:absolute;top:4px;right:18%;
+    background:hsl(var(--primary));color:hsl(var(--primary-foreground));
+    font-size:.6rem;font-weight:700;border-radius:999px;
+    min-width:15px;height:15px;display:flex;align-items:center;justify-content:center;padding:0 3px;
+  }
+
+  .container{padding:16px;max-width:640px;margin:0 auto;}
+  .view{display:none;}
+  .view.active{display:block;}
+
+  h2.pagetitle{font-size:1.4rem;font-weight:800;letter-spacing:-0.02em;margin:0 0 2px;}
+  p.pagesubtitle{margin:0 0 18px;color:hsl(var(--muted-foreground));font-size:.85rem;}
+
+  .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;}
+  .stat-card{
+    background:hsl(var(--card));border:1px solid hsl(var(--border));
+    border-radius:calc(var(--radius) + 4px);padding:14px;
+  }
+  .stat-card .row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .stat-card .row p{margin:0;font-size:.72rem;font-weight:600;color:hsl(var(--muted-foreground));}
+  .stat-card .iconwrap{
+    width:28px;height:28px;border-radius:999px;
+    background:hsl(var(--primary) / .15);
+    display:flex;align-items:center;justify-content:center;color:hsl(var(--primary));
+  }
+  .stat-card .iconwrap .icon{width:15px;height:15px;}
+  .stat-card .value{font-size:1.5rem;font-weight:800;color:hsl(var(--foreground));}
+  .stat-card .sub{font-size:.68rem;color:hsl(var(--muted-foreground));margin-top:2px;}
+
+  .card{
+    background:hsl(var(--card));border:1px solid hsl(var(--border));
+    border-radius:calc(var(--radius) + 4px);padding:18px;margin-bottom:18px;
+  }
+  .card h3{margin:0 0 3px;font-size:1.05rem;font-weight:700;letter-spacing:-0.01em;}
+  .card .cardsub{margin:0 0 14px;font-size:.8rem;color:hsl(var(--muted-foreground));}
+
+  .dropzone{
+    border:1.5px dashed hsl(var(--border));border-radius:var(--radius);
+    padding:28px 14px;text-align:center;cursor:pointer;color:hsl(var(--muted-foreground));
+  }
+  .dropzone.drag{border-color:hsl(var(--primary));background:hsl(var(--accent));}
+  .dropzone .icon{width:26px;height:26px;margin:0 auto 8px;color:hsl(var(--muted-foreground));}
+  .dropzone strong{color:hsl(var(--foreground));font-size:.88rem;}
+  .dropzone .hint{margin-top:4px;font-size:.72rem;}
   input[type=file]{display:none;}
-  .filepill{display:flex;align-items:center;justify-content:space-between;background:var(--card2);border-radius:12px;padding:12px 14px;margin-top:12px;font-size:.85rem;}
-  .filepill button{background:none;border:none;color:var(--bad);font-size:.85rem;cursor:pointer;}
-  button.primary{width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(90deg,var(--accent),#8e7cf5);color:#fff;font-size:1rem;font-weight:700;cursor:pointer;margin-top:14px;}
-  button.primary:disabled{opacity:.5;}
-  button.secondary{width:100%;padding:12px;border:1px solid #333a49;border-radius:12px;background:transparent;color:var(--text);font-size:.9rem;font-weight:600;cursor:pointer;margin-top:8px;}
-  button.warnbtn{background:linear-gradient(90deg,#e67e22,#f39c12);}
-  .progress-wrap{margin-top:16px;}
-  .bar{height:10px;border-radius:6px;background:#282e3a;overflow:hidden;}
-  .bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),#74b9ff);width:0%;transition:width .3s;}
-  .progress-label{font-size:.78rem;color:var(--muted);margin-top:6px;display:flex;justify-content:space-between;}
-  .log{max-height:140px;overflow-y:auto;background:#0d0f14;border-radius:10px;padding:10px;font-size:.72rem;color:var(--muted);margin-top:10px;font-family:monospace;}
-  .log div{padding:2px 0;}
-  .log .err{color:var(--bad);}
-  .log .ok{color:var(--good);}
-  .log .warn{color:var(--warn);}
-  .keyrow{display:flex;gap:10px;align-items:center;background:var(--card2);border-radius:12px;padding:10px 12px;margin-bottom:8px;}
-  .keyrow input.masked{flex:1;background:transparent;border:none;color:var(--text);font-size:.85rem;outline:none;}
-  .status-dot{width:9px;height:9px;border-radius:50%;background:var(--good);flex-shrink:0;}
-  .status-dot.bad{background:var(--bad);}
-  .status-dot.off{background:#555;}
-  .switch{position:relative;width:38px;height:22px;flex-shrink:0;}
-  .switch input{opacity:0;width:0;height:0;}
-  .slider{position:absolute;cursor:pointer;inset:0;background:#3a4050;border-radius:22px;transition:.2s;}
-  .slider:before{content:"";position:absolute;height:16px;width:16px;left:3px;top:3px;background:white;border-radius:50%;transition:.2s;}
-  .switch input:checked + .slider{background:var(--accent);}
-  .switch input:checked + .slider:before{transform:translateX(16px);}
-  .keyrow button.icon{background:none;border:none;color:var(--muted);font-size:1rem;cursor:pointer;flex-shrink:0;}
-  .keyrow .keylabel{display:flex;flex-direction:column;flex:1;min-width:0;}
-  .keyrow .keylabel small{color:var(--muted);font-size:.68rem;}
+  .filepill{
+    display:flex;align-items:center;gap:8px;justify-content:space-between;
+    background:hsl(var(--accent));border-radius:var(--radius);padding:10px 12px;margin-top:10px;font-size:.82rem;
+  }
+  .filepill .left{display:flex;align-items:center;gap:8px;min-width:0;}
+  .filepill .left .icon{width:16px;height:16px;color:hsl(var(--primary));flex-shrink:0;}
+  .filepill span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .filepill button{background:none;border:none;color:hsl(0 70% 65%);font-size:.8rem;cursor:pointer;flex-shrink:0;}
+
+  label.field-label{display:block;font-size:.78rem;font-weight:600;margin:14px 0 6px;color:hsl(var(--foreground));}
+  input.textfield, select.selectfield{
+    width:100%;padding:10px 12px;border-radius:calc(var(--radius) - 2px);
+    border:1px solid hsl(var(--border));background:hsl(var(--input) / .4);
+    color:hsl(var(--foreground));font-size:.86rem;font-family:inherit;
+  }
   .voicepick{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-  .voicepick label{background:var(--card2);border-radius:10px;padding:10px;font-size:.82rem;text-align:center;cursor:pointer;border:1px solid transparent;display:block;}
+  .voicepick label{
+    background:hsl(var(--input) / .4);border:1px solid hsl(var(--border));border-radius:calc(var(--radius) - 2px);
+    padding:9px;font-size:.8rem;text-align:center;cursor:pointer;display:block;
+  }
   .voicepick input{display:none;}
-  .voicepick input:checked + span{color:var(--accent2);font-weight:700;}
-  .voicepick label:has(input:checked){border-color:var(--accent);}
-  .result{text-align:center;padding:10px 0;}
-  .result a{display:inline-block;margin-top:10px;background:var(--good);color:#08210f;padding:12px 22px;border-radius:12px;text-decoration:none;font-weight:700;}
-  .muted{color:var(--muted);font-size:.8rem;}
+  .voicepick input:checked + span{color:hsl(var(--primary));font-weight:700;}
+  .voicepick label:has(input:checked){border-color:hsl(var(--primary));background:hsl(var(--primary) / .1);}
+
+  button.btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    padding:11px 16px;border-radius:calc(var(--radius) - 2px);border:none;
+    font-size:.86rem;font-weight:700;cursor:pointer;font-family:inherit;
+  }
+  button.btn-primary{background:hsl(var(--primary));color:hsl(var(--primary-foreground));width:100%;margin-top:16px;padding:13px;font-size:.92rem;}
+  button.btn-primary:disabled{opacity:.4;}
+  button.btn-outline{background:transparent;border:1px solid hsl(var(--border));color:hsl(var(--foreground));}
+  button.btn-ghost{background:hsl(var(--accent));color:hsl(var(--foreground));}
+  button.btn-danger{background:transparent;border:1px solid hsl(0 63% 31% / .5);color:hsl(0 70% 65%);}
+  button.btn-sm{padding:7px 11px;font-size:.74rem;}
+  button.btn .icon{width:14px;height:14px;}
+
+  .section-head{display:flex;align-items:center;justify-content:space-between;margin:22px 0 10px;}
+  .section-head h3{margin:0;font-size:1rem;font-weight:700;}
+  .section-head a{color:hsl(var(--primary));font-size:.78rem;font-weight:600;cursor:pointer;}
+
+  .job-card{
+    background:hsl(var(--card));border:1px solid hsl(var(--border));
+    border-radius:calc(var(--radius)+4px);border-radius:14px;overflow:hidden;margin-bottom:12px;
+  }
+  .job-card .body{padding:14px 14px 12px;}
+  .job-card .top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px;}
+  .job-card .title{font-weight:700;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .job-card .meta{display:flex;flex-wrap:wrap;gap:10px;font-size:.7rem;color:hsl(var(--muted-foreground));margin-top:4px;}
+  .job-card .meta span{display:flex;align-items:center;gap:4px;}
+  .job-card .meta .icon{width:12px;height:12px;}
+  .badge-status{
+    font-size:.64rem;font-weight:700;padding:3px 8px;border-radius:999px;flex-shrink:0;white-space:nowrap;
+  }
+  .badge-done{background:hsl(var(--good) / .18);color:hsl(var(--good));}
+  .badge-running{background:hsl(var(--primary) / .18);color:hsl(var(--primary));}
+  .badge-paused{background:hsl(215 20% 65% / .18);color:hsl(var(--muted-foreground));}
+  .badge-error{background:hsl(0 63% 31% / .25);color:hsl(0 70% 65%);}
+  .job-card .barwrap{height:6px;border-radius:4px;background:hsl(var(--accent));overflow:hidden;margin-top:10px;}
+  .job-card .barfill{height:100%;background:hsl(var(--primary));border-radius:4px;transition:width .3s;}
+  .job-card .actions{
+    display:flex;gap:8px;padding:10px 14px;border-top:1px solid hsl(var(--border));
+    background:hsl(var(--sidebar) / .4);
+  }
+  .job-card .actions button{flex:1;}
+  .job-card audio{width:100%;margin-top:10px;height:34px;}
+
+  .empty-state{text-align:center;padding:36px 12px;color:hsl(var(--muted-foreground));font-size:.85rem;}
+  .empty-state .icon{width:32px;height:32px;margin:0 auto 10px;opacity:.5;}
+
+  .log{max-height:120px;overflow-y:auto;background:hsl(222 47% 8%);border-radius:8px;padding:9px;font-size:.68rem;color:hsl(var(--muted-foreground));margin-top:10px;font-family:'SFMono-Regular',Menlo,monospace;}
+  .log div{padding:2px 0;}
+  .log .err{color:hsl(0 70% 65%);}
+  .log .ok{color:hsl(var(--good));}
+  .log .warn{color:hsl(var(--primary));}
+
+  .keyrow{
+    display:flex;gap:10px;align-items:center;background:hsl(var(--accent));
+    border-radius:var(--radius);padding:10px 12px;margin-bottom:8px;
+  }
+  .status-dot{width:8px;height:8px;border-radius:50%;background:hsl(var(--good));flex-shrink:0;}
+  .status-dot.bad{background:hsl(0 70% 60%);}
+  .status-dot.off{background:hsl(215 15% 40%);}
+  .switch{position:relative;width:36px;height:21px;flex-shrink:0;}
+  .switch input{opacity:0;width:0;height:0;}
+  .slider{position:absolute;cursor:pointer;inset:0;background:hsl(var(--border));border-radius:22px;transition:.2s;}
+  .slider:before{content:"";position:absolute;height:15px;width:15px;left:3px;top:3px;background:white;border-radius:50%;transition:.2s;}
+  .switch input:checked + .slider{background:hsl(var(--primary));}
+  .switch input:checked + .slider:before{transform:translateX(15px);}
+  .keyrow .icon-btn{background:none;border:none;color:hsl(var(--muted-foreground));font-size:1rem;cursor:pointer;flex-shrink:0;}
+  .keyrow .icon-btn .icon{width:15px;height:15px;}
+  .keyrow .keylabel{display:flex;flex-direction:column;flex:1;min-width:0;font-size:.82rem;}
+  .keyrow .keylabel small{color:hsl(var(--muted-foreground));font-size:.66rem;}
+
+  .warn-text{color:hsl(var(--primary));font-size:.8rem;margin-bottom:6px;}
+  a.link{color:hsl(var(--primary));text-decoration:none;}
   .hidden{display:none !important;}
-  a.link{color:var(--accent2);}
-  .banner{background:#241f38;border:1px solid var(--accent);border-radius:12px;padding:14px;margin-bottom:16px;font-size:.85rem;}
-  .banner strong{color:var(--accent2);}
-  .banner-actions{display:flex;gap:8px;margin-top:10px;}
-  .banner-actions button{flex:1;padding:10px;border-radius:10px;border:none;font-weight:700;cursor:pointer;font-size:.82rem;}
-  .btn-resume{background:var(--accent);color:#fff;}
-  .btn-discard{background:transparent;border:1px solid #444b5c !important;color:var(--muted);}
-  .pausednotice{background:#2e2410;border:1px solid var(--warn);border-radius:12px;padding:12px;margin-top:12px;font-size:.82rem;color:#ffe9a8;}
+  .paused-box{
+    background:hsl(var(--primary) / .1);border:1px solid hsl(var(--primary) / .35);
+    border-radius:var(--radius);padding:11px;margin-top:10px;font-size:.78rem;color:hsl(38 92% 75%);
+  }
 </style>
 </head>
 <body>
 
-<header>
-  <img class="logo" src="icon.png" alt="logo">
-  <h1>Sesli Kitap Dönüştürücü</h1>
-  <p>PDF kitaplarını MP3 sesli kitaba çevir</p>
+<header class="app-header">
+  <div class="brand-icon">
+    <svg class="icon" viewBox="0 0 24 24"><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H3v-7a9 9 0 0 1 18 0v7h-3a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/></svg>
+  </div>
+  <div>
+    <h1>Sesli Kitap Stüdyosu</h1>
+    <p>PDF kitaplarını yüksek kaliteli sesli kitaba çevir</p>
+  </div>
 </header>
 
-<div class="tabs">
-  <div class="tab active" data-tab="convert">Dönüştür</div>
-  <div class="tab" data-tab="keys">API Anahtarları</div>
-</div>
+<nav class="tabbar">
+  <div class="navtab active" data-view="dashboard">
+    <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+    Anasayfa
+  </div>
+  <div class="navtab" data-view="jobs">
+    <svg class="icon" viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>
+    Tüm İşler
+  </div>
+  <div class="navtab" data-view="keys" style="position:relative;">
+    <svg class="icon" viewBox="0 0 24 24"><circle cx="15" cy="9" r="3"/><path d="m10.5 13.5-6 6V22h2.5l6-6"/><path d="m14 10-3 3"/></svg>
+    API Anahtarları
+    <span class="badge" id="keyCountBadge">0</span>
+  </div>
+</nav>
 
 <div class="container">
 
-  <!-- CONVERT TAB -->
-  <div id="tab-convert">
+  <!-- ============ DASHBOARD ============ -->
+  <div class="view active" id="view-dashboard">
+    <h2 class="pagetitle">Anasayfa</h2>
+    <p class="pagesubtitle">Kitaplarını yüksek kaliteli sese çevir.</p>
 
-    <div id="resumeBanner" class="banner hidden">
-      <div><strong>Yarım kalan bir dönüştürme var</strong></div>
-      <div class="muted" id="resumeInfo" style="margin-top:4px;"></div>
-      <div class="banner-actions">
-        <button class="btn-resume" id="resumeBtn">▶️ Devam Et</button>
-        <button class="btn-discard" id="discardBtn">🗑️ Sil, Yeni Başla</button>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="row"><p>Toplam Dönüşüm</p><div class="iconwrap"><svg class="icon" viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg></div></div>
+        <div class="value" id="statTotal">0</div>
+        <div class="sub">İşlenen kitap</div>
+      </div>
+      <div class="stat-card">
+        <div class="row"><p>Devam Eden</p><div class="iconwrap"><svg class="icon" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div></div>
+        <div class="value" id="statRunning">0</div>
+        <div class="sub">Şu an dönüştürülüyor</div>
+      </div>
+      <div class="stat-card">
+        <div class="row"><p>Aktif Anahtar</p><div class="iconwrap"><svg class="icon" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg></div></div>
+        <div class="value" id="statActiveKeys">0</div>
+        <div class="sub" id="statExhaustedKeys">0 kotası dolu</div>
+      </div>
+      <div class="stat-card">
+        <div class="row"><p>Bekleyen</p><div class="iconwrap"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div>
+        <div class="value" id="statPaused">0</div>
+        <div class="sub">Duraklatılmış iş</div>
       </div>
     </div>
 
-    <div class="card" id="uploadCard">
-      <h2>1. PDF Yükle</h2>
+    <div class="card">
+      <h3>Yeni Dönüşüm</h3>
+      <p class="cardsub">Sesli kitap oluşturmak için bir belge yükle.</p>
+
       <div class="dropzone" id="dropzone">
-        <div>📄 <strong>Dosya seç</strong> ya da buraya sürükle</div>
-        <div class="muted" style="margin-top:6px;">Sadece .pdf</div>
+        <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <div><strong>Dosya seç</strong> ya da buraya sürükle</div>
+        <div class="hint">Sadece PDF desteklenir</div>
         <input type="file" id="fileInput" accept="application/pdf">
       </div>
       <div id="filepill" class="filepill hidden">
-        <span id="filename"></span>
+        <div class="left">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span id="filename"></span>
+        </div>
         <button id="removeFile">✕ Kaldır</button>
       </div>
-    </div>
 
-    <div class="card" id="voiceCard">
-      <h2>2. Ses Seç</h2>
+      <label class="field-label">Başlık (opsiyonel)</label>
+      <input type="text" class="textfield" id="titleInput" placeholder="Kitap adı">
+
+      <label class="field-label">Anlatıcı Sesi</label>
       <div class="voicepick" id="voicepick">
         <label><input type="radio" name="voice" value="Kore" checked><span>Kore — Doğal (E)</span></label>
         <label><input type="radio" name="voice" value="Puck"><span>Puck — Canlı (E)</span></label>
         <label><input type="radio" name="voice" value="Aoede"><span>Aoede — Yumuşak (K)</span></label>
         <label><input type="radio" name="voice" value="Charon"><span>Charon — Derin (E)</span></label>
       </div>
+
+      <label class="field-label">Çıktı Formatı</label>
+      <select class="selectfield" disabled><option>MP3</option></select>
+
+      <div id="noKeysWarn" class="warn-text hidden" style="margin-top:12px;">⚠️ Önce "API Anahtarları" sekmesinden en az bir Gemini API key eklemelisin.</div>
+      <button class="btn btn-primary" id="startBtn" disabled>
+        <svg class="icon" viewBox="0 0 24 24"><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H3v-7a9 9 0 0 1 18 0v7h-3a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/></svg>
+        Sesli Kitaba Çevir
+      </button>
     </div>
 
-    <div class="card">
-      <h2>3. Dönüştür</h2>
-      <div id="noKeysWarn" class="muted hidden" style="color:var(--warn);">⚠️ Önce "API Anahtarları" sekmesinden en az bir Gemini API key eklemelisin.</div>
-      <button class="primary" id="startBtn" disabled>🎙️ Sesli Kitaba Çevir</button>
-
-      <div class="progress-wrap hidden" id="progressWrap">
-        <div class="bar"><div class="bar-fill" id="barFill"></div></div>
-        <div class="progress-label">
-          <span id="progressText">Hazırlanıyor…</span>
-          <span id="progressPct">0%</span>
-        </div>
-        <button class="secondary" id="pauseBtn" style="margin-top:10px;">⏸️ Duraklat</button>
-        <div class="log" id="log"></div>
-        <div id="pausedNotice" class="pausednotice hidden">
-          <span id="pausedNoticeText">⏸️ Duraklatıldı.</span><br>
-          İlerleme cihazına kaydedildi, kapatsan bile kaybolmaz.
-          <button class="primary" id="continueAfterPauseBtn" style="margin-top:10px;">▶️ Devam Et</button>
-        </div>
-      </div>
-
-      <div class="result hidden" id="resultBox">
-        <div>✅ Dönüştürme tamamlandı!</div>
-        <audio id="player" controls style="width:100%;margin-top:10px;"></audio>
-        <br>
-        <a id="downloadLink" download="sesli-kitap.mp3">⬇️ MP3 Olarak İndir</a>
-      </div>
+    <div class="section-head">
+      <h3>Son Aktiviteler</h3>
+      <a data-view-link="jobs">Tümünü gör</a>
     </div>
+    <div id="recentJobsList"></div>
   </div>
 
-  <!-- KEYS TAB -->
-  <div id="tab-keys" class="hidden">
+  <!-- ============ ALL JOBS ============ -->
+  <div class="view" id="view-jobs">
+    <h2 class="pagetitle">Tüm İşler</h2>
+    <p class="pagesubtitle">Tüm dönüştürme işlerin burada listelenir.</p>
+    <div id="allJobsList"></div>
+  </div>
+
+  <!-- ============ API KEYS ============ -->
+  <div class="view" id="view-keys">
+    <h2 class="pagetitle">API Anahtarları</h2>
+    <p class="pagesubtitle">Google AI Studio anahtarlarını yönet.</p>
     <div class="card">
-      <h2>Google AI Studio API Anahtarları</h2>
-      <p class="muted">Birden fazla ücretsiz key ekleyebilirsin. Bir key'in kotası dolunca uygulama otomatik sıradaki aktif key'e geçer. İstediğin key'i anahtar simgesiyle geçici olarak devre dışı bırakabilir, sonra tekrar açabilirsin. Kotası dolan key'i "Sıfırla" ile tekrar deneyebilirsin (örn. kota yenilendiğinde).</p>
+      <p class="cardsub" style="margin-bottom:14px;">Birden fazla ücretsiz key ekleyebilirsin. Bir key'in kotası dolunca uygulama otomatik sıradaki aktif key'e geçer. İstediğin key'i açma/kapama anahtarıyla geçici olarak devre dışı bırakabilir, sonra tekrar açabilirsin. Kotası dolan key'i "↺" ile tekrar deneyebilirsin.</p>
       <div id="keyList"></div>
-      <div style="display:flex;gap:8px;margin-top:10px;">
-        <input type="text" id="newKeyInput" placeholder="AIzaSy… yapıştır" style="flex:1;padding:12px;border-radius:10px;border:1px solid #333a49;background:var(--card2);color:var(--text);">
-        <button class="secondary" style="width:auto;margin:0;padding:12px 16px;" id="addKeyBtn">Ekle</button>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <input type="text" id="newKeyInput" class="textfield" placeholder="AIzaSy… yapıştır" style="flex:1;">
+        <button class="btn btn-ghost" id="addKeyBtn">Ekle</button>
       </div>
-      <p class="muted" style="margin-top:14px;">Ücretsiz key almak için: <a class="link" href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a></p>
+      <p class="cardsub" style="margin-top:14px;margin-bottom:0;">Ücretsiz key almak için: <a class="link" href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a></p>
     </div>
   </div>
 
 </div>
 
 <script>
-/* ================= IndexedDB helper ================= */
-const DB_NAME='skd_db', DB_VERSION=1;
+/* ================= icons ================= */
+const ICONS = {
+  pause:'<svg class="icon" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>',
+  play:'<svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>',
+  download:'<svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+  trash:'<svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+  clock:'<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+  mic:'<svg class="icon" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>',
+  layers:'<svg class="icon" viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>',
+};
+
+/* ================= IndexedDB ================= */
+const DB_NAME='skd_db', DB_VERSION=2;
 function idbOpen(){
   return new Promise((res,rej)=>{
     const req = indexedDB.open(DB_NAME, DB_VERSION);
@@ -183,6 +373,9 @@ function idbOpen(){
       if(!db.objectStoreNames.contains('job')) db.createObjectStore('job',{keyPath:'id'});
       if(!db.objectStoreNames.contains('audio_chunks')) db.createObjectStore('audio_chunks',{keyPath:'index'});
       if(!db.objectStoreNames.contains('final')) db.createObjectStore('final',{keyPath:'id'});
+      if(!db.objectStoreNames.contains('jobs')) db.createObjectStore('jobs',{keyPath:'id'});
+      if(!db.objectStoreNames.contains('chunks')) db.createObjectStore('chunks',{keyPath:'key'});
+      if(!db.objectStoreNames.contains('finals')) db.createObjectStore('finals',{keyPath:'jobId'});
     };
     req.onsuccess=()=>res(req.result);
     req.onerror=()=>rej(req.error);
@@ -215,6 +408,15 @@ async function idbGetAll(store){
     r.onerror=()=>rej(r.error);
   });
 }
+async function idbDelete(store, key){
+  const db = await idbOpen();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction(store,'readwrite');
+    tx.objectStore(store).delete(key);
+    tx.oncomplete=()=>res();
+    tx.onerror=()=>rej(tx.error);
+  });
+}
 async function idbClear(store){
   const db = await idbOpen();
   return new Promise((res,rej)=>{
@@ -225,34 +427,58 @@ async function idbClear(store){
   });
 }
 
+/* migrate old single-job schema (v1) into new multi-job schema (v2) so nothing is lost */
+async function migrateLegacyJob(){
+  const oldJob = await idbGet('job','current');
+  if(!oldJob) return;
+  const existingJobs = await idbGetAll('jobs');
+  if(existingJobs.length>0){ await idbClear('job'); return; } // already migrated
+  const oldChunks = await idbGetAll('audio_chunks');
+  const id = 'legacy-'+Date.now();
+  const total = oldJob.chunks.length;
+  const status = oldChunks.length>=total ? 'done' : 'paused';
+  await idbPut('jobs', {
+    id, title: (oldJob.fileName||'Kitap').replace(/\.pdf$/i,''), fileName: oldJob.fileName,
+    voiceName: oldJob.voiceName, chunks: oldJob.chunks, total, status,
+    createdAt: oldJob.createdAt||Date.now(), updatedAt: Date.now()
+  });
+  for(const c of oldChunks){
+    await idbPut('chunks', {key:`${id}#${c.index}`, jobId:id, index:c.index, buffer:c.buffer});
+  }
+  await idbClear('job');
+  await idbClear('audio_chunks');
+  await idbClear('final');
+}
+
 /* ================= key storage ================= */
 const STORE_KEY = 'skd_api_keys_v2';
 function loadKeys(){
   try{
     const raw = JSON.parse(localStorage.getItem(STORE_KEY)||'[]');
-    // migrate old format {key,status} -> add enabled
     return raw.map(k=>({key:k.key, status:k.status||'ok', enabled: k.enabled!==false}));
   }catch(e){ return []; }
 }
 function saveKeys(k){ localStorage.setItem(STORE_KEY, JSON.stringify(k)); }
 let apiKeys = loadKeys();
+function usableKeys(){ return apiKeys.filter(k=>k.enabled && k.status!=='bad'); }
 
-/* ================= tabs ================= */
-document.querySelectorAll('.tab').forEach(t=>{
-  t.onclick=()=>{
-    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-    t.classList.add('active');
-    document.getElementById('tab-convert').classList.toggle('hidden', t.dataset.tab!=='convert');
-    document.getElementById('tab-keys').classList.toggle('hidden', t.dataset.tab!=='keys');
-  };
-});
+/* ================= navigation ================= */
+function showView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.querySelectorAll('.navtab').forEach(t=>t.classList.toggle('active', t.dataset.view===name));
+  if(name==='jobs') renderAllJobsList();
+  if(name==='dashboard') renderDashboard();
+}
+document.querySelectorAll('.navtab').forEach(t=>t.onclick=()=>showView(t.dataset.view));
+document.querySelectorAll('[data-view-link]').forEach(a=>a.onclick=()=>showView(a.dataset.viewLink));
 
 /* ================= key management UI ================= */
 function renderKeys(){
   const list = document.getElementById('keyList');
   list.innerHTML='';
   if(apiKeys.length===0){
-    list.innerHTML = '<p class="muted">Henüz key eklenmedi.</p>';
+    list.innerHTML = '<p class="cardsub">Henüz key eklenmedi.</p>';
   }
   apiKeys.forEach((k,i)=>{
     const row=document.createElement('div');
@@ -263,18 +489,19 @@ function renderKeys(){
     row.innerHTML = `
       <div class="status-dot ${dotClass}"></div>
       <div class="keylabel"><span>${masked}</span><small>${statusText}</small></div>
-      ${k.status==='bad' ? '<button class="icon" title="Sıfırla" data-act="reset">↺</button>' : ''}
+      ${k.status==='bad' ? '<button class="icon-btn" title="Sıfırla" data-act="reset">↺</button>' : ''}
       <label class="switch" title="Aktif/Pasif">
         <input type="checkbox" data-act="toggle" ${k.enabled?'checked':''}>
         <span class="slider"></span>
       </label>
-      <button class="icon" title="Sil" data-act="delete">🗑️</button>`;
-    row.querySelector('[data-act=delete]').onclick=()=>{ apiKeys.splice(i,1); saveKeys(apiKeys); renderKeys(); updateStartBtn(); };
+      <button class="icon-btn" title="Sil" data-act="delete">${ICONS.trash}</button>`;
+    row.querySelector('[data-act=delete]').onclick=()=>{ apiKeys.splice(i,1); saveKeys(apiKeys); renderKeys(); updateStartBtn(); renderDashboard(); };
     const resetBtn = row.querySelector('[data-act=reset]');
-    if(resetBtn) resetBtn.onclick=()=>{ apiKeys[i].status='ok'; saveKeys(apiKeys); renderKeys(); updateStartBtn(); };
-    row.querySelector('[data-act=toggle]').onchange=(e)=>{ apiKeys[i].enabled=e.target.checked; saveKeys(apiKeys); renderKeys(); updateStartBtn(); };
+    if(resetBtn) resetBtn.onclick=()=>{ apiKeys[i].status='ok'; saveKeys(apiKeys); renderKeys(); updateStartBtn(); renderDashboard(); };
+    row.querySelector('[data-act=toggle]').onchange=(e)=>{ apiKeys[i].enabled=e.target.checked; saveKeys(apiKeys); renderKeys(); updateStartBtn(); renderDashboard(); };
     list.appendChild(row);
   });
+  document.getElementById('keyCountBadge').textContent = apiKeys.length;
 }
 document.getElementById('addKeyBtn').onclick=()=>{
   const input = document.getElementById('newKeyInput');
@@ -285,15 +512,13 @@ document.getElementById('addKeyBtn').onclick=()=>{
   input.value='';
   renderKeys();
   updateStartBtn();
-  maybeOfferResumeAfterKeyChange();
+  renderDashboard();
 };
-function usableKeys(){ return apiKeys.filter(k=>k.enabled && k.status!=='bad'); }
 function updateStartBtn(){
   const has = usableKeys().length>0;
   document.getElementById('startBtn').disabled = !has || !pdfFile;
   document.getElementById('noKeysWarn').classList.toggle('hidden', has);
 }
-renderKeys();
 
 /* ================= file handling ================= */
 let pdfFile=null;
@@ -309,6 +534,9 @@ function setFile(f){
   pdfFile=f;
   document.getElementById('filename').textContent = f.name;
   document.getElementById('filepill').classList.remove('hidden');
+  if(!document.getElementById('titleInput').value){
+    document.getElementById('titleInput').value = f.name.replace(/\.pdf$/i,'');
+  }
   updateStartBtn();
 }
 document.getElementById('removeFile').onclick=()=>{
@@ -318,24 +546,9 @@ document.getElementById('removeFile').onclick=()=>{
   updateStartBtn();
 };
 
-/* ================= logging/progress ================= */
-function log(msg, cls){
-  const l=document.getElementById('log');
-  const d=document.createElement('div');
-  if(cls) d.className=cls;
-  d.textContent=msg;
-  l.appendChild(d);
-  l.scrollTop=l.scrollHeight;
-}
-function setProgress(pct, text){
-  document.getElementById('barFill').style.width=pct+'%';
-  document.getElementById('progressPct').textContent=Math.round(pct)+'%';
-  if(text) document.getElementById('progressText').textContent=text;
-}
-
 /* ================= PDF text extraction ================= */
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-async function extractPdfText(file){
+async function extractPdfText(file, onProgress){
   const buf = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({data:buf}).promise;
   let fullText='';
@@ -344,7 +557,7 @@ async function extractPdfText(file){
     const content = await page.getTextContent();
     const text = content.items.map(it=>it.str).join(' ');
     fullText += text + '\n\n';
-    setProgress((p/pdf.numPages)*10, `PDF okunuyor: sayfa ${p}/${pdf.numPages}`);
+    if(onProgress) onProgress(p, pdf.numPages);
   }
   return fullText.trim();
 }
@@ -360,7 +573,7 @@ function chunkText(text, maxLen=3500){
   return chunks;
 }
 
-/* ================= Gemini TTS with full key rotation ================= */
+/* ================= Gemini TTS ================= */
 function base64ToInt16(b64){
   const bin = atob(b64);
   const bytes = new Uint8Array(bin.length);
@@ -391,11 +604,8 @@ async function callTts(keyObj, text, voiceName){
   if(!b64) throw new Error('Ses verisi alınamadı');
   return base64ToInt16(b64);
 }
-
-/* Try ALL usable keys (in rotation) for a single chunk before giving up.
-   Returns {ok:true, pcm} or {ok:false, exhausted:true} if no usable key could do it. */
 let rotationCursor=0;
-async function ttsChunkTryAllKeys(text, voiceName){
+async function ttsChunkTryAllKeys(text, voiceName, logFn){
   const usable = usableKeys();
   if(usable.length===0) return {ok:false, exhausted:true};
   const tried = new Set();
@@ -410,18 +620,17 @@ async function ttsChunkTryAllKeys(text, voiceName){
     }catch(e){
       if(e.quota){
         const found = apiKeys.find(k=>k.key===keyObj.key);
-        if(found){ found.status='bad'; saveKeys(apiKeys); renderKeys(); }
-        log(`Key ${keyObj.key.slice(0,6)}… kotası doldu, sıradaki key deneniyor…`,'warn');
+        if(found){ found.status='bad'; saveKeys(apiKeys); renderKeys(); renderDashboard(); }
+        logFn && logFn(`Key ${keyObj.key.slice(0,6)}… kotası doldu, sıradaki key deneniyor…`,'warn');
         continue;
       }else{
-        log(`Hata: ${e.message} — sıradaki key deneniyor…`,'err');
+        logFn && logFn(`Hata: ${e.message} — sıradaki key deneniyor…`,'err');
         continue;
       }
     }
   }
-  // all usable keys tried and failed this pass
   if(usableKeys().length===0) return {ok:false, exhausted:true};
-  return {ok:false, exhausted:false}; // transient errors on all — caller may retry later
+  return {ok:false, exhausted:false};
 }
 
 /* ================= MP3 encoding ================= */
@@ -437,187 +646,290 @@ function encodeMp3(pcmChunks, sampleRate=24000){
   return new Blob(mp3Data, {type:'audio/mp3'});
 }
 
-/* ================= job / resume state ================= */
-let currentJob=null; // {id:'current', fileName, voiceName, chunks:[...], total, createdAt}
+/* ================= job engine (multi-job, one runs at a time) ================= */
 let isConverting=false;
+let activeJobId=null;
 let pauseRequested=false;
 
-async function saveJobMeta(job){ await idbPut('job', job); }
-async function saveChunkAudio(index, int16arr){
-  await idbPut('audio_chunks', {index, buffer: int16arr.buffer.slice(0)});
+async function getJobs(){
+  const jobs = await idbGetAll('jobs');
+  jobs.sort((a,b)=>b.createdAt-a.createdAt);
+  return jobs;
 }
-async function getCompletedIndices(){
-  const all = await idbGetAll('audio_chunks');
-  return new Set(all.map(a=>a.index));
+async function getJobCompletedCount(jobId, total){
+  const all = await idbGetAll('chunks');
+  return all.filter(c=>c.jobId===jobId).length;
 }
-async function clearJob(){
-  await idbClear('audio_chunks');
-  await idbClear('job');
-  await idbClear('final');
+async function saveChunkAudio(jobId, index, int16arr){
+  await idbPut('chunks', {key:`${jobId}#${index}`, jobId, index, buffer:int16arr.buffer.slice(0)});
 }
-
-async function checkForResumableJob(){
-  const job = await idbGet('job','current');
+async function deleteJobEverywhere(jobId){
+  const all = await idbGetAll('chunks');
+  for(const c of all){ if(c.jobId===jobId) await idbDelete('chunks', c.key); }
+  await idbDelete('finals', jobId).catch(()=>{});
+  await idbDelete('jobs', jobId);
+}
+async function setJobStatus(jobId, status){
+  const job = await idbGet('jobs', jobId);
   if(!job) return;
-  const completed = await getCompletedIndices();
-  if(completed.size >= job.chunks.length){
-    return; // already fully done (shouldn't normally persist like this) 
+  job.status = status;
+  job.updatedAt = Date.now();
+  await idbPut('jobs', job);
+}
+
+async function startNewJob(){
+  const title = document.getElementById('titleInput').value.trim() || pdfFile.name.replace(/\.pdf$/i,'');
+  const voiceName = document.querySelector('input[name=voice]:checked').value;
+  const id = 'job-'+Date.now();
+
+  const tempLog=[];
+  try{
+    const text = await extractPdfText(pdfFile, (p,total)=>{
+      renderDashboardProgressHint(`PDF okunuyor: sayfa ${p}/${total}`);
+    });
+    if(!text || text.length<10) throw new Error('PDF içinde okunabilir metin bulunamadı (taranmış görsel PDF olabilir).');
+    const chunks = chunkText(text);
+
+    const job = {
+      id, title, fileName: pdfFile.name, voiceName, chunks, total: chunks.length,
+      status:'paused', createdAt: Date.now(), updatedAt: Date.now()
+    };
+    await idbPut('jobs', job);
+
+    // reset upload form
+    pdfFile=null;
+    document.getElementById('filepill').classList.add('hidden');
+    document.getElementById('titleInput').value='';
+    fileInput.value='';
+    updateStartBtn();
+
+    await renderDashboard();
+    await runJobEngine(id);
+  }catch(e){
+    alert('Hata: '+e.message);
   }
-  currentJob = job;
-  document.getElementById('resumeBanner').classList.remove('hidden');
-  document.getElementById('resumeInfo').textContent =
-    `${job.fileName} — ${completed.size}/${job.chunks.length} parça tamamlanmış. Kaldığın yerden devam edebilirsin.`;
 }
-document.getElementById('discardBtn').onclick=async ()=>{
-  await clearJob();
-  currentJob=null;
-  document.getElementById('resumeBanner').classList.add('hidden');
-};
-document.getElementById('resumeBtn').onclick=async ()=>{
-  document.getElementById('resumeBanner').classList.add('hidden');
-  document.getElementById('progressWrap').classList.remove('hidden');
-  document.getElementById('log').innerHTML='';
-  log('Kaldığı yerden devam ediliyor…');
-  await runConversionLoop(currentJob);
-};
-document.getElementById('continueAfterPauseBtn').onclick=async ()=>{
-  document.getElementById('pausedNotice').classList.add('hidden');
-  pauseRequested=false;
-  log('Devam ediliyor…');
-  await runConversionLoop(currentJob);
-};
-document.getElementById('pauseBtn').onclick=()=>{
-  pauseRequested=true;
-  document.getElementById('pauseBtn').disabled=true;
-  document.getElementById('pauseBtn').textContent='⏸️ Duraklatılıyor…';
-};
-function maybeOfferResumeAfterKeyChange(){
-  // if job is paused waiting for keys and a new usable key just got added, hint user
-  if(currentJob && document.getElementById('pausedNotice').classList.contains('hidden')===false){
-    log('Yeni key eklendi, "Devam Et"e basabilirsin.','ok');
+function renderDashboardProgressHint(text){
+  const btn=document.getElementById('startBtn');
+  if(btn) btn.querySelector('span')?.remove();
+}
+
+async function runJobEngine(jobId){
+  if(isConverting){
+    alert('Aynı anda sadece bir kitap dönüştürülebilir. Önce çalışan işi duraklat.');
+    return;
   }
-}
-
-checkForResumableJob();
-
-/* core loop: converts remaining chunks of `job`, persisting each result.
-   Pauses (does not fail) if all keys become exhausted. */
-function showPaused(message){
-  document.getElementById('pausedNoticeText').textContent = message;
-  document.getElementById('pausedNotice').classList.remove('hidden');
-  document.getElementById('pauseBtn').classList.add('hidden');
-  isConverting=false;
-  document.getElementById('startBtn').disabled=false;
-}
-
-async function runConversionLoop(job){
-  if(isConverting) return;
+  const job = await idbGet('jobs', jobId);
+  if(!job) return;
   isConverting=true;
+  activeJobId=jobId;
   pauseRequested=false;
-  document.getElementById('startBtn').disabled=true;
-  document.getElementById('progressWrap').classList.remove('hidden');
-  document.getElementById('resultBox').classList.add('hidden');
-  document.getElementById('pausedNotice').classList.add('hidden');
-  document.getElementById('pauseBtn').classList.remove('hidden');
-  document.getElementById('pauseBtn').disabled=false;
-  document.getElementById('pauseBtn').textContent='⏸️ Duraklat';
+  await setJobStatus(jobId,'running');
+  await renderDashboard();
+  await renderAllJobsList();
 
   try{
-    const total = job.chunks.length;
-    let completed = await getCompletedIndices();
-    setProgress(10 + (completed.size/total)*80, `Sese çevriliyor: ${completed.size}/${total}`);
+    const total = job.total;
+    let completedCount = await getJobCompletedCount(jobId, total);
 
     for(let i=0;i<total;i++){
-      if(completed.has(i)) continue;
+      const existing = await idbGet('chunks', `${jobId}#${i}`);
+      if(existing) continue;
 
       if(pauseRequested){
-        showPaused(`⏸️ Duraklatıldı. ${completed.size}/${total} parça tamamlandı — ilerleme kaydedildi, kaybolmaz.`);
-        return;
+        await setJobStatus(jobId,'paused');
+        break;
       }
 
-      setProgress(10 + (i/total)*80, `Sese çevriliyor: ${i+1}/${total}`);
       const result = await ttsChunkTryAllKeys(job.chunks[i], job.voiceName);
       if(result.ok){
-        await saveChunkAudio(i, result.pcm);
-        completed.add(i);
-        log(`Parça ${i+1}/${total} tamam`, 'ok');
+        await saveChunkAudio(jobId, i, result.pcm);
+        completedCount++;
+        await renderJobProgressLive(jobId, completedCount, total);
       }else if(result.exhausted){
-        log('Tüm aktif key\'lerin kotası doldu. İlerleme kaydedildi.', 'warn');
-        showPaused(`⏸️ Kota doldu. ${completed.size}/${total} parça tamamlandı — ilerleme kaydedildi, kaybolmaz.`);
-        return; // pause — do NOT clear job, do NOT alert as error
-      }else{
-        log(`Parça ${i+1} geçici hata verdi, devam ediliyor…`, 'warn');
-        // leave uncompleted; loop will retry it next full pass triggered by resume
+        await setJobStatus(jobId,'paused');
+        break;
       }
+      // transient errors: leave uncompleted, loop continues to next chunk this pass
 
       if(pauseRequested){
-        showPaused(`⏸️ Duraklatıldı. ${completed.size}/${total} parça tamamlandı — ilerleme kaydedildi, kaybolmaz.`);
-        return;
+        await setJobStatus(jobId,'paused');
+        break;
       }
     }
 
-    completed = await getCompletedIndices();
-    if(completed.size < total){
-      // some chunks had transient (non-quota) failures; offer resume so user can retry
-      log('Bazı parçalar tamamlanamadı, "Devam Et" ile tekrar denenebilir.', 'warn');
-      showPaused(`⏸️ ${completed.size}/${total} parça tamamlandı. Bazı parçalar geçici hata verdi — "Devam Et" ile tekrar denenebilir.`);
-      return;
+    completedCount = await getJobCompletedCount(jobId, total);
+    if(completedCount >= total){
+      const allChunks = (await idbGetAll('chunks')).filter(c=>c.jobId===jobId);
+      allChunks.sort((a,b)=>a.index-b.index);
+      const pcmChunks = allChunks.map(c=>new Int16Array(c.buffer));
+      const blob = encodeMp3(pcmChunks);
+      await idbPut('finals', {jobId, blob});
+      await setJobStatus(jobId,'done');
+    }else{
+      const j = await idbGet('jobs', jobId);
+      if(j && j.status==='running') await setJobStatus(jobId,'paused');
     }
-
-    // all done -> merge
-    setProgress(92,'MP3 oluşturuluyor…');
-    log('Tüm parçalar tamam, MP3 birleştiriliyor…');
-    const allAudio = await idbGetAll('audio_chunks');
-    allAudio.sort((a,b)=>a.index-b.index);
-    const pcmChunks = allAudio.map(a=>new Int16Array(a.buffer));
-    const blob = encodeMp3(pcmChunks);
-    const url = URL.createObjectURL(blob);
-
-    setProgress(100,'Tamamlandı');
-    document.getElementById('player').src=url;
-    document.getElementById('downloadLink').href=url;
-    document.getElementById('downloadLink').download = job.fileName.replace(/\.pdf$/i,'')+'.mp3';
-    document.getElementById('resultBox').classList.remove('hidden');
-    document.getElementById('pauseBtn').classList.add('hidden');
-    log('Sesli kitap hazır!', 'ok');
-
-    await clearJob();
-    currentJob=null;
   }catch(e){
-    log('HATA: '+e.message, 'err');
-    alert('Hata: '+e.message);
+    await setJobStatus(jobId,'error');
+    console.error(e);
   }finally{
     isConverting=false;
-    document.getElementById('startBtn').disabled=false;
+    activeJobId=null;
+    pauseRequested=false;
+    await renderDashboard();
+    await renderAllJobsList();
+  }
+}
+function pauseActiveJob(){
+  if(isConverting) pauseRequested=true;
+}
+async function resumeJob(jobId){
+  await runJobEngine(jobId);
+}
+async function downloadJob(jobId){
+  const rec = await idbGet('finals', jobId);
+  if(!rec){ alert('Ses dosyası bulunamadı.'); return; }
+  const job = await idbGet('jobs', jobId);
+  const url = URL.createObjectURL(rec.blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (job?.title || 'sesli-kitap') + '.mp3';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+async function deleteJob(jobId){
+  if(activeJobId===jobId && isConverting){
+    alert('Önce çalışan işi duraklat.');
+    return;
+  }
+  if(!confirm('Bu işi silmek istediğine emin misin? İlerleme kalıcı olarak silinecek.')) return;
+  await deleteJobEverywhere(jobId);
+  await renderDashboard();
+  await renderAllJobsList();
+}
+
+/* ================= rendering ================= */
+function statusBadge(status){
+  const map = {
+    running: ['badge-running','Dönüştürülüyor'],
+    paused: ['badge-paused','Duraklatıldı'],
+    done: ['badge-done','Tamamlandı'],
+    error: ['badge-error','Hata'],
+  };
+  const [cls,label] = map[status] || map.paused;
+  return `<span class="badge-status ${cls}">${label}</span>`;
+}
+
+async function jobCardHtml(job){
+  const completed = await getJobCompletedCount(job.id, job.total);
+  const pct = job.total>0 ? Math.round((completed/job.total)*100) : 0;
+  const isActive = activeJobId===job.id && isConverting;
+  const displayStatus = isActive ? 'running' : job.status;
+
+  let actionsHtml = '';
+  if(displayStatus==='running'){
+    actionsHtml = `<button class="btn btn-outline btn-sm" data-act="pause">${ICONS.pause} Duraklat</button>`;
+  }else if(displayStatus==='done'){
+    actionsHtml = `<button class="btn btn-ghost btn-sm" data-act="download">${ICONS.download} İndir</button>`;
+  }else{
+    actionsHtml = `<button class="btn btn-ghost btn-sm" data-act="resume">${ICONS.play} Devam Et</button>`;
+  }
+  actionsHtml += `<button class="btn btn-danger btn-sm" data-act="delete">${ICONS.trash} Sil</button>`;
+
+  return `
+    <div class="job-card" data-job-id="${job.id}">
+      <div class="body">
+        <div class="top">
+          <div class="title">${job.title}</div>
+          ${statusBadge(displayStatus)}
+        </div>
+        <div class="meta">
+          <span>${ICONS.mic} ${job.voiceName}</span>
+          <span>${ICONS.layers} ${completed}/${job.total} parça</span>
+        </div>
+        <div class="barwrap"><div class="barfill" style="width:${pct}%"></div></div>
+      </div>
+      <div class="actions">${actionsHtml}</div>
+    </div>`;
+}
+
+function attachJobCardHandlers(container){
+  container.querySelectorAll('.job-card').forEach(card=>{
+    const jobId = card.dataset.jobId;
+    const pauseBtn = card.querySelector('[data-act=pause]');
+    const resumeBtn = card.querySelector('[data-act=resume]');
+    const downloadBtn = card.querySelector('[data-act=download]');
+    const deleteBtn = card.querySelector('[data-act=delete]');
+    if(pauseBtn) pauseBtn.onclick=()=>pauseActiveJob();
+    if(resumeBtn) resumeBtn.onclick=()=>resumeJob(jobId);
+    if(downloadBtn) downloadBtn.onclick=()=>downloadJob(jobId);
+    if(deleteBtn) deleteBtn.onclick=()=>deleteJob(jobId);
+  });
+}
+
+async function renderJobProgressLive(jobId, completed, total){
+  document.querySelectorAll(`.job-card[data-job-id="${jobId}"]`).forEach(card=>{
+    const pct = Math.round((completed/total)*100);
+    const bar = card.querySelector('.barfill');
+    if(bar) bar.style.width = pct+'%';
+    const metaSpan = card.querySelectorAll('.meta span')[1];
+    if(metaSpan) metaSpan.innerHTML = `${ICONS.layers} ${completed}/${total} parça`;
+  });
+}
+
+async function renderDashboard(){
+  const jobs = await getJobs();
+  const runningCount = jobs.filter(j=> (activeJobId===j.id && isConverting) || j.status==='running').length;
+  const pausedCount = jobs.filter(j=> j.status==='paused' && !(activeJobId===j.id && isConverting)).length;
+  document.getElementById('statTotal').textContent = jobs.length;
+  document.getElementById('statRunning').textContent = runningCount;
+  document.getElementById('statPaused').textContent = pausedCount;
+  document.getElementById('statActiveKeys').textContent = usableKeys().length;
+  document.getElementById('statExhaustedKeys').textContent = apiKeys.filter(k=>k.status==='bad').length + ' kotası dolu';
+
+  const recent = jobs.slice(0,3);
+  const listEl = document.getElementById('recentJobsList');
+  if(recent.length===0){
+    listEl.innerHTML = `<div class="empty-state">${ICONS.layers}<div>Henüz bir dönüşüm yapılmadı.<br>Yukarıdan bir PDF yükleyerek başla.</div></div>`;
+  }else{
+    listEl.innerHTML = (await Promise.all(recent.map(jobCardHtml))).join('');
+    attachJobCardHandlers(listEl);
   }
 }
 
-/* ================= start new conversion ================= */
-document.getElementById('startBtn').onclick = async ()=>{
-  document.getElementById('log').innerHTML='';
-  try{
-    setProgress(1,'PDF okunuyor…');
-    document.getElementById('progressWrap').classList.remove('hidden');
-    log('PDF metni çıkarılıyor…');
-    const text = await extractPdfText(pdfFile);
-    if(!text || text.length<10) throw new Error('PDF içinde okunabilir metin bulunamadı (taranmış görsel PDF olabilir).');
-    log(`Metin çıkarıldı: ${text.length} karakter`, 'ok');
-
-    const chunks = chunkText(text);
-    log(`${chunks.length} parçaya bölündü, sese çevriliyor…`);
-
-    await clearJob(); // starting fresh replaces any old job
-    const job = { id:'current', fileName: pdfFile.name, voiceName: document.querySelector('input[name=voice]:checked').value, chunks, createdAt: Date.now() };
-    await saveJobMeta(job);
-    currentJob = job;
-
-    await runConversionLoop(job);
-  }catch(e){
-    log('HATA: '+e.message, 'err');
-    alert('Hata: '+e.message);
-    document.getElementById('startBtn').disabled=false;
+async function renderAllJobsList(){
+  const jobs = await getJobs();
+  const listEl = document.getElementById('allJobsList');
+  if(jobs.length===0){
+    listEl.innerHTML = `<div class="empty-state">${ICONS.layers}<div>Henüz bir dönüşüm yapılmadı.</div></div>`;
+  }else{
+    listEl.innerHTML = (await Promise.all(jobs.map(jobCardHtml))).join('');
+    attachJobCardHandlers(listEl);
   }
+}
+
+document.getElementById('startBtn').onclick = async ()=>{
+  document.getElementById('startBtn').disabled=true;
+  await startNewJob();
+  updateStartBtn();
 };
+
+/* ================= init ================= */
+(async function init(){
+  await migrateLegacyJob();
+  renderKeys();
+  updateStartBtn();
+  await renderDashboard();
+
+  // auto-resume any job that was 'running' when the app was last killed
+  const jobs = await getJobs();
+  const orphanRunning = jobs.find(j=>j.status==='running');
+  if(orphanRunning){
+    await runJobEngine(orphanRunning.id);
+  }
+})();
 </script>
 </body>
 </html>
