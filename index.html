@@ -633,13 +633,24 @@ async function ttsChunkTryAllKeys(text, voiceName, logFn){
   return {ok:false, exhausted:false};
 }
 
-/* ================= MP3 encoding ================= */
-function encodeMp3(pcmChunks, sampleRate=24000){
+/* ================= MP3 encoding (non-blocking) ================= */
+// Encodes in small batches with a UI-thread yield between each, so the
+// app never freezes even for long books with many chunks.
+function yieldToUI(){ return new Promise(r=> (window.requestAnimationFrame ? requestAnimationFrame(()=>setTimeout(r,0)) : setTimeout(r,0)) ); }
+async function encodeMp3Async(pcmChunks, sampleRate=24000, onProgress){
   const mp3encoder = new lamejs.Mp3Encoder(1, sampleRate, 96);
   const mp3Data=[];
-  for(const chunk of pcmChunks){
-    const mp3buf = mp3encoder.encodeBuffer(chunk);
-    if(mp3buf.length>0) mp3Data.push(new Int8Array(mp3buf));
+  const BATCH_SAMPLES = sampleRate; // ~1 second of audio per batch before yielding
+  const total = pcmChunks.length;
+  for(let ci=0; ci<total; ci++){
+    const chunk = pcmChunks[ci];
+    for(let offset=0; offset<chunk.length; offset+=BATCH_SAMPLES){
+      const slice = chunk.subarray(offset, offset+BATCH_SAMPLES);
+      const mp3buf = mp3encoder.encodeBuffer(slice);
+      if(mp3buf.length>0) mp3Data.push(new Int8Array(mp3buf));
+      await yieldToUI();
+    }
+    if(onProgress) onProgress(ci+1, total);
   }
   const end = mp3encoder.flush();
   if(end.length>0) mp3Data.push(new Int8Array(end));
@@ -650,6 +661,7 @@ function encodeMp3(pcmChunks, sampleRate=24000){
 let isConverting=false;
 let activeJobId=null;
 let pauseRequested=false;
+let mergingJobId=null;
 
 async function getJobs(){
   const jobs = await idbGetAll('jobs');
@@ -760,10 +772,18 @@ async function runJobEngine(jobId){
 
     completedCount = await getJobCompletedCount(jobId, total);
     if(completedCount >= total){
+      mergingJobId = jobId;
+      await renderDashboard();
+      await renderAllJobsList();
       const allChunks = (await idbGetAll('chunks')).filter(c=>c.jobId===jobId);
       allChunks.sort((a,b)=>a.index-b.index);
       const pcmChunks = allChunks.map(c=>new Int16Array(c.buffer));
-      const blob = encodeMp3(pcmChunks);
+      const blob = await encodeMp3Async(pcmChunks, 24000, async (done,tot)=>{
+        document.querySelectorAll(`.job-card[data-job-id="${jobId}"] .badge-status`).forEach(b=>{
+          b.textContent = `Birleştiriliyor ${Math.round((done/tot)*100)}%`;
+        });
+      });
+      mergingJobId=null;
       await idbPut('finals', {jobId, blob});
       await setJobStatus(jobId,'done');
     }else{
@@ -771,12 +791,14 @@ async function runJobEngine(jobId){
       if(j && j.status==='running') await setJobStatus(jobId,'paused');
     }
   }catch(e){
+    mergingJobId=null;
     await setJobStatus(jobId,'error');
     console.error(e);
   }finally{
     isConverting=false;
     activeJobId=null;
     pauseRequested=false;
+    mergingJobId=null;
     await renderDashboard();
     await renderAllJobsList();
   }
@@ -814,6 +836,7 @@ async function deleteJob(jobId){
 function statusBadge(status){
   const map = {
     running: ['badge-running','Dönüştürülüyor'],
+    merging: ['badge-running','Birleştiriliyor'],
     paused: ['badge-paused','Duraklatıldı'],
     done: ['badge-done','Tamamlandı'],
     error: ['badge-error','Hata'],
@@ -825,18 +848,23 @@ function statusBadge(status){
 async function jobCardHtml(job){
   const completed = await getJobCompletedCount(job.id, job.total);
   const pct = job.total>0 ? Math.round((completed/job.total)*100) : 0;
+  const isMerging = mergingJobId===job.id;
   const isActive = activeJobId===job.id && isConverting;
-  const displayStatus = isActive ? 'running' : job.status;
+  const displayStatus = isMerging ? 'merging' : (isActive ? 'running' : job.status);
 
   let actionsHtml = '';
-  if(displayStatus==='running'){
+  if(displayStatus==='merging'){
+    actionsHtml = `<span class="cardsub" style="margin:0;">MP3 oluşturuluyor, lütfen bekle…</span>`;
+  }else if(displayStatus==='running'){
     actionsHtml = `<button class="btn btn-outline btn-sm" data-act="pause">${ICONS.pause} Duraklat</button>`;
   }else if(displayStatus==='done'){
     actionsHtml = `<button class="btn btn-ghost btn-sm" data-act="download">${ICONS.download} İndir</button>`;
   }else{
-    actionsHtml = `<button class="btn btn-ghost btn-sm" data-act="resume">${ICONS.play} Devam Et</button>`;
+    actionsHtml = `<button class="btn btn-ghost btn-sm" data-act="resume">${ICONS.play} ${displayStatus==='error' ? 'Tekrar Dene' : 'Devam Et'}</button>`;
   }
-  actionsHtml += `<button class="btn btn-danger btn-sm" data-act="delete">${ICONS.trash} Sil</button>`;
+  if(displayStatus!=='merging'){
+    actionsHtml += `<button class="btn btn-danger btn-sm" data-act="delete">${ICONS.trash} Sil</button>`;
+  }
 
   return `
     <div class="job-card" data-job-id="${job.id}">
