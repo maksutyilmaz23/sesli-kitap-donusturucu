@@ -347,6 +347,16 @@
       </div>
       <p class="cardsub" style="margin-top:14px;margin-bottom:0;">Ücretsiz key almak için: <a class="link" href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a></p>
     </div>
+
+    <div class="card">
+      <h3>Yedekle / Geri Yükle</h3>
+      <p class="cardsub">Tüm anahtarlarını tek bir JSON dosyası olarak indirip saklayabilir, istediğin zaman bu dosyayı tekrar yükleyerek anahtarlarını geri getirebilirsin.</p>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-outline" id="exportKeysBtn" style="flex:1;">⬇️ JSON İndir</button>
+        <button class="btn btn-outline" id="importKeysBtn" style="flex:1;">⬆️ JSON Yükle</button>
+      </div>
+      <input type="file" id="importKeysFile" accept="application/json,.json" class="hidden">
+    </div>
   </div>
 
 </div>
@@ -519,6 +529,56 @@ function updateStartBtn(){
   document.getElementById('startBtn').disabled = !has || !pdfFile;
   document.getElementById('noKeysWarn').classList.toggle('hidden', has);
 }
+
+/* ---- export / import keys as JSON ---- */
+document.getElementById('exportKeysBtn').onclick=()=>{
+  if(apiKeys.length===0){ alert('Dışa aktarılacak key yok.'); return; }
+  const payload = { type:'sesli-kitap-api-keys', exportedAt: new Date().toISOString(), keys: apiKeys };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const stamp = new Date().toISOString().slice(0,10);
+  a.download = `sesli-kitap-api-keys-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+};
+document.getElementById('importKeysBtn').onclick=()=>{
+  document.getElementById('importKeysFile').click();
+};
+document.getElementById('importKeysFile').onchange=async (e)=>{
+  const file = e.target.files[0];
+  e.target.value='';
+  if(!file) return;
+  try{
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    const incoming = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.keys) ? parsed.keys : null);
+    if(!incoming) throw new Error('Geçersiz dosya formatı');
+    let added=0, updated=0;
+    for(const k of incoming){
+      if(!k || !k.key) continue;
+      const existing = apiKeys.find(x=>x.key===k.key);
+      if(existing){
+        existing.enabled = k.enabled!==false;
+        existing.status = k.status || 'ok';
+        updated++;
+      }else{
+        apiKeys.push({key:k.key, status:k.status||'ok', enabled:k.enabled!==false});
+        added++;
+      }
+    }
+    saveKeys(apiKeys);
+    renderKeys();
+    updateStartBtn();
+    renderDashboard();
+    alert(`İçe aktarma tamam: ${added} yeni key eklendi, ${updated} key güncellendi.`);
+  }catch(err){
+    alert('Dosya okunamadı: '+err.message);
+  }
+};
 
 /* ================= file handling ================= */
 let pdfFile=null;
