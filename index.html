@@ -530,20 +530,54 @@ function updateStartBtn(){
   document.getElementById('noKeysWarn').classList.toggle('hidden', has);
 }
 
-/* ---- export / import keys as JSON ---- */
-document.getElementById('exportKeysBtn').onclick=()=>{
-  if(apiKeys.length===0){ alert('Dışa aktarılacak key yok.'); return; }
-  const payload = { type:'sesli-kitap-api-keys', exportedAt: new Date().toISOString(), keys: apiKeys };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+/* ---- native save/share helper (Android WebView doesn't reliably support blob+<a download>) ---- */
+function blobToBase64(blob){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onloadend = ()=> resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+async function saveAndShareFile(filename, blob){
+  try{
+    if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem){
+      const { Filesystem, Share } = window.Capacitor.Plugins;
+      const base64 = await blobToBase64(blob);
+      const writeResult = await Filesystem.writeFile({
+        path: filename,
+        data: base64,
+        directory: 'CACHE',
+        recursive: true
+      });
+      if(Share && Share.share){
+        await Share.share({ title: filename, url: writeResult.uri, dialogTitle: 'Kaydet veya Paylaş' });
+      }else{
+        alert('Dosya kaydedildi: ' + writeResult.uri);
+      }
+      return true;
+    }
+  }catch(err){
+    console.error('Native save failed, falling back to browser download', err);
+  }
+  // Fallback for regular desktop/mobile browsers (not Android WebView)
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url;
-  const stamp = new Date().toISOString().slice(0,10);
-  a.download = `sesli-kitap-api-keys-${stamp}.json`;
+  a.href = url; a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+  setTimeout(()=>URL.revokeObjectURL(url), 3000);
+  return false;
+}
+
+/* ---- export / import keys as JSON ---- */
+document.getElementById('exportKeysBtn').onclick=async ()=>{
+  if(apiKeys.length===0){ alert('Dışa aktarılacak key yok.'); return; }
+  const payload = { type:'sesli-kitap-api-keys', exportedAt: new Date().toISOString(), keys: apiKeys };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const stamp = new Date().toISOString().slice(0,10);
+  await saveAndShareFile(`sesli-kitap-api-keys-${stamp}.json`, blob);
 };
 document.getElementById('importKeysBtn').onclick=()=>{
   document.getElementById('importKeysFile').click();
@@ -873,13 +907,8 @@ async function downloadJob(jobId){
   const rec = await idbGet('finals', jobId);
   if(!rec){ alert('Ses dosyası bulunamadı.'); return; }
   const job = await idbGet('jobs', jobId);
-  const url = URL.createObjectURL(rec.blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = (job?.title || 'sesli-kitap') + '.mp3';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+  const filename = (job?.title || 'sesli-kitap').replace(/[\\/:*?"<>|]/g,'_') + '.mp3';
+  await saveAndShareFile(filename, rec.blob);
 }
 async function deleteJob(jobId){
   if(activeJobId===jobId && isConverting){
