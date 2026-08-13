@@ -830,6 +830,7 @@ async function runJobEngine(jobId){
   isConverting=true;
   activeJobId=jobId;
   pauseRequested=false;
+  enableBackgroundMode();
   await setJobStatus(jobId,'running');
   await renderDashboard();
   await renderAllJobsList();
@@ -893,6 +894,7 @@ async function runJobEngine(jobId){
     activeJobId=null;
     pauseRequested=false;
     mergingJobId=null;
+    disableBackgroundMode();
     await renderDashboard();
     await renderAllJobsList();
   }
@@ -1034,24 +1036,30 @@ document.getElementById('startBtn').onclick = async ()=>{
 };
 
 /* ================= background mode (keep converting while app is backgrounded) ================= */
+// Only active WHILE a conversion is actually running — keeps the file picker
+// (PDF upload, key JSON upload) from ever triggering the background service.
 function enableBackgroundMode(){
   const bm = window.cordova && cordova.plugins && cordova.plugins.backgroundMode;
   if(!bm) return;
-  bm.setDefaults({
-    title: 'Sesli Kitap Stüdyosu',
-    text: 'Kitap arka planda sese çevriliyor…',
-    color: 'f5a623',
-    resume: true,
-    hidden: false,
-    bigText: true
-  });
-  bm.enable();
-  if(bm.disableWebViewOptimizations) bm.disableWebViewOptimizations();
-  bm.on && bm.on('activate', ()=>{ if(bm.disableWebViewOptimizations) bm.disableWebViewOptimizations(); });
+  try{
+    bm.setDefaults({
+      title: 'Sesli Kitap Stüdyosu',
+      text: 'Kitap arka planda sese çevriliyor…',
+      icon: 'ic_bg_notification',
+      color: 'f5a623',
+      resume: true,
+      hidden: false,
+      bigText: true
+    });
+    bm.enable();
+    if(bm.disableWebViewOptimizations) bm.disableWebViewOptimizations();
+  }catch(e){ console.error('backgroundMode enable failed', e); }
 }
-document.addEventListener('deviceready', enableBackgroundMode);
-// fallback in case deviceready already fired before this script attached its listener
-setTimeout(enableBackgroundMode, 1500);
+function disableBackgroundMode(){
+  const bm = window.cordova && cordova.plugins && cordova.plugins.backgroundMode;
+  if(!bm) return;
+  try{ bm.disable(); }catch(e){ console.error('backgroundMode disable failed', e); }
+}
 
 /* ================= init ================= */
 (async function init(){

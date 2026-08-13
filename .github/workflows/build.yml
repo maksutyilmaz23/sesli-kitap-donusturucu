@@ -34,6 +34,11 @@ jobs:
       - name: Generate app icons and splash screen
         run: npx @capacitor/assets generate --android
 
+      - name: Add background-mode notification icon
+        run: |
+          mkdir -p android/app/src/main/res/drawable
+          cp resources/notification_icon.png android/app/src/main/res/drawable/ic_bg_notification.png
+
       - name: Sync web assets
         run: npx cap sync android
 
