@@ -1033,6 +1033,26 @@ document.getElementById('startBtn').onclick = async ()=>{
   updateStartBtn();
 };
 
+/* ================= background mode (keep converting while app is backgrounded) ================= */
+function enableBackgroundMode(){
+  const bm = window.cordova && cordova.plugins && cordova.plugins.backgroundMode;
+  if(!bm) return;
+  bm.setDefaults({
+    title: 'Sesli Kitap Stüdyosu',
+    text: 'Kitap arka planda sese çevriliyor…',
+    color: 'f5a623',
+    resume: true,
+    hidden: false,
+    bigText: true
+  });
+  bm.enable();
+  if(bm.disableWebViewOptimizations) bm.disableWebViewOptimizations();
+  bm.on && bm.on('activate', ()=>{ if(bm.disableWebViewOptimizations) bm.disableWebViewOptimizations(); });
+}
+document.addEventListener('deviceready', enableBackgroundMode);
+// fallback in case deviceready already fired before this script attached its listener
+setTimeout(enableBackgroundMode, 1500);
+
 /* ================= init ================= */
 (async function init(){
   await migrateLegacyJob();
