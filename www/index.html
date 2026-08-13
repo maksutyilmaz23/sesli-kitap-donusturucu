@@ -221,6 +221,26 @@
     background:hsl(var(--primary) / .1);border:1px solid hsl(var(--primary) / .35);
     border-radius:var(--radius);padding:11px;margin-top:10px;font-size:.78rem;color:hsl(38 92% 75%);
   }
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;
+    display:flex;align-items:center;justify-content:center;padding:24px;
+  }
+  .modal-box{
+    background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:14px;
+    padding:20px;max-width:340px;width:100%;
+  }
+  .modal-title{font-weight:700;font-size:1rem;margin-bottom:8px;}
+  .modal-text{font-size:.85rem;color:hsl(var(--muted-foreground));margin-bottom:16px;}
+  .modal-actions{display:flex;gap:8px;}
+  .modal-actions button{flex:1;}
+  .live-status{
+    display:flex;flex-direction:column;gap:4px;margin-top:10px;
+    background:hsl(var(--sidebar) / .6);border-radius:8px;padding:8px 10px;
+  }
+  .live-status .line{display:flex;align-items:center;gap:6px;font-size:.7rem;color:hsl(var(--muted-foreground));}
+  .live-status .line b{color:hsl(var(--foreground));font-weight:600;}
+  .live-status .chunkbar{height:4px;border-radius:3px;background:hsl(var(--accent));overflow:hidden;margin-top:2px;}
+  .live-status .chunkbarfill{height:100%;background:hsl(var(--primary) / .7);border-radius:3px;transition:width .25s;}
 </style>
 </head>
 <body>
@@ -359,6 +379,17 @@
     </div>
   </div>
 
+</div>
+
+<div class="modal-overlay hidden" id="confirmModal">
+  <div class="modal-box">
+    <div class="modal-title" id="confirmModalTitle">Emin misin?</div>
+    <div class="modal-text" id="confirmModalText"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="confirmModalCancel">İptal</button>
+      <button class="btn" id="confirmModalOk" style="background:hsl(0 63% 31%);color:#fff;">Sil</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -699,7 +730,8 @@ async function callTts(keyObj, text, voiceName){
   return base64ToInt16(b64);
 }
 let rotationCursor=0;
-async function ttsChunkTryAllKeys(text, voiceName, logFn){
+function maskKey(k){ return k.slice(0,6)+'••••'+k.slice(-4); }
+async function ttsChunkTryAllKeys(text, voiceName, onKeyTry){
   const usable = usableKeys();
   if(usable.length===0) return {ok:false, exhausted:true};
   const tried = new Set();
@@ -708,6 +740,7 @@ async function ttsChunkTryAllKeys(text, voiceName, logFn){
     rotationCursor++;
     if(tried.has(keyObj.key)) continue;
     tried.add(keyObj.key);
+    if(onKeyTry) onKeyTry(maskKey(keyObj.key));
     try{
       const pcm = await callTts(keyObj, text, voiceName);
       return {ok:true, pcm};
@@ -715,10 +748,8 @@ async function ttsChunkTryAllKeys(text, voiceName, logFn){
       if(e.quota){
         const found = apiKeys.find(k=>k.key===keyObj.key);
         if(found){ found.status='bad'; saveKeys(apiKeys); renderKeys(); renderDashboard(); }
-        logFn && logFn(`Key ${keyObj.key.slice(0,6)}… kotası doldu, sıradaki key deneniyor…`,'warn');
         continue;
       }else{
-        logFn && logFn(`Hata: ${e.message} — sıradaki key deneniyor…`,'err');
         continue;
       }
     }
@@ -756,6 +787,7 @@ let isConverting=false;
 let activeJobId=null;
 let pauseRequested=false;
 let mergingJobId=null;
+let liveStatus={}; // jobId -> {chunkIndex, total, keyMasked, pct}
 
 async function getJobs(){
   const jobs = await idbGetAll('jobs');
@@ -848,22 +880,42 @@ async function runJobEngine(jobId){
         break;
       }
 
-      const result = await ttsChunkTryAllKeys(job.chunks[i], job.voiceName);
+      // live status: simulated per-chunk progress (TTS API gives no real streaming
+      // progress, so we animate a soft estimate while the request is in flight)
+      liveStatus[jobId] = {chunkIndex:i+1, total, keyMasked:'…', pct:0};
+      updateLiveStatusUI(jobId);
+      const simTimer = setInterval(()=>{
+        const s = liveStatus[jobId];
+        if(s && s.pct<90) s.pct += Math.random()*8;
+        updateLiveStatusUI(jobId);
+      }, 400);
+
+      const result = await ttsChunkTryAllKeys(job.chunks[i], job.voiceName, (maskedKey)=>{
+        if(liveStatus[jobId]) liveStatus[jobId].keyMasked = maskedKey;
+        updateLiveStatusUI(jobId);
+      });
+      clearInterval(simTimer);
+
       if(result.ok){
+        if(liveStatus[jobId]) liveStatus[jobId].pct = 100;
+        updateLiveStatusUI(jobId);
         await saveChunkAudio(jobId, i, result.pcm);
         completedCount++;
         await renderJobProgressLive(jobId, completedCount, total);
       }else if(result.exhausted){
+        delete liveStatus[jobId];
         await setJobStatus(jobId,'paused');
         break;
       }
       // transient errors: leave uncompleted, loop continues to next chunk this pass
 
       if(pauseRequested){
+        delete liveStatus[jobId];
         await setJobStatus(jobId,'paused');
         break;
       }
     }
+    delete liveStatus[jobId];
 
     completedCount = await getJobCompletedCount(jobId, total);
     if(completedCount >= total){
@@ -887,20 +939,41 @@ async function runJobEngine(jobId){
     }
   }catch(e){
     mergingJobId=null;
+    delete liveStatus[jobId];
     await setJobStatus(jobId,'error');
     console.error(e);
   }finally{
     isConverting=false;
     activeJobId=null;
     pauseRequested=false;
+    pausingJobId=null;
     mergingJobId=null;
+    delete liveStatus[jobId];
     disableBackgroundMode();
     await renderDashboard();
     await renderAllJobsList();
   }
 }
-function pauseActiveJob(){
-  if(isConverting) pauseRequested=true;
+function updateLiveStatusUI(jobId){
+  const s = liveStatus[jobId];
+  document.querySelectorAll(`.job-card[data-job-id="${jobId}"] .live-status`).forEach(el=>{
+    if(!s){ el.innerHTML=''; return; }
+    const pct = Math.min(99, Math.round(s.pct));
+    el.innerHTML = `
+      <div class="line">Parça <b>${s.chunkIndex}/${s.total}</b> dönüştürülüyor</div>
+      <div class="line">Kullanılan key: <b>${s.keyMasked}</b></div>
+      <div class="chunkbar"><div class="chunkbarfill" style="width:${pct}%"></div></div>`;
+  });
+}
+let pausingJobId=null;
+function pauseActiveJob(jobId){
+  if(!isConverting) return;
+  pauseRequested=true;
+  pausingJobId=jobId;
+  document.querySelectorAll(`.job-card[data-job-id="${jobId}"] [data-act=pause]`).forEach(btn=>{
+    btn.disabled=true;
+    btn.innerHTML = `${ICONS.pause} Duraklatılıyor…`;
+  });
 }
 async function resumeJob(jobId){
   await runJobEngine(jobId);
@@ -912,12 +985,30 @@ async function downloadJob(jobId){
   const filename = (job?.title || 'sesli-kitap').replace(/[\\/:*?"<>|]/g,'_') + '.mp3';
   await saveAndShareFile(filename, rec.blob);
 }
+function showConfirmModal(title, text){
+  return new Promise(resolve=>{
+    const modal = document.getElementById('confirmModal');
+    document.getElementById('confirmModalTitle').textContent = title;
+    document.getElementById('confirmModalText').textContent = text;
+    modal.classList.remove('hidden');
+    const okBtn = document.getElementById('confirmModalOk');
+    const cancelBtn = document.getElementById('confirmModalCancel');
+    function cleanup(result){
+      modal.classList.add('hidden');
+      okBtn.onclick=null; cancelBtn.onclick=null;
+      resolve(result);
+    }
+    okBtn.onclick=()=>cleanup(true);
+    cancelBtn.onclick=()=>cleanup(false);
+  });
+}
 async function deleteJob(jobId){
   if(activeJobId===jobId && isConverting){
     alert('Önce çalışan işi duraklat.');
     return;
   }
-  if(!confirm('Bu işi silmek istediğine emin misin? İlerleme kalıcı olarak silinecek.')) return;
+  const ok = await showConfirmModal('İşi sil?', 'Bu işi silmek istediğine emin misin? İlerleme kalıcı olarak silinecek.');
+  if(!ok) return;
   await deleteJobEverywhere(jobId);
   await renderDashboard();
   await renderAllJobsList();
@@ -969,6 +1060,7 @@ async function jobCardHtml(job){
           <span>${ICONS.layers} ${completed}/${job.total} parça</span>
         </div>
         <div class="barwrap"><div class="barfill" style="width:${pct}%"></div></div>
+        ${displayStatus==='running' ? '<div class="live-status"></div>' : ''}
       </div>
       <div class="actions">${actionsHtml}</div>
     </div>`;
@@ -981,7 +1073,7 @@ function attachJobCardHandlers(container){
     const resumeBtn = card.querySelector('[data-act=resume]');
     const downloadBtn = card.querySelector('[data-act=download]');
     const deleteBtn = card.querySelector('[data-act=delete]');
-    if(pauseBtn) pauseBtn.onclick=()=>pauseActiveJob();
+    if(pauseBtn) pauseBtn.onclick=()=>pauseActiveJob(jobId);
     if(resumeBtn) resumeBtn.onclick=()=>resumeJob(jobId);
     if(downloadBtn) downloadBtn.onclick=()=>downloadJob(jobId);
     if(deleteBtn) deleteBtn.onclick=()=>deleteJob(jobId);
