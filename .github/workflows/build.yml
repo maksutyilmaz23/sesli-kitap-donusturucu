@@ -42,6 +42,9 @@ jobs:
       - name: Sync web assets
         run: npx cap sync android
 
+      - name: Patch AndroidManifest for background-mode foreground service permissions
+        run: python3 scripts/patch_manifest.py
+
       - name: Ensure Kotlin plugin present
         run: |
           if ! grep -q "org.jetbrains.kotlin.android" android/build.gradle; then
